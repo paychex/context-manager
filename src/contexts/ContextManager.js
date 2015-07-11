@@ -1,25 +1,42 @@
 /* global define: false */
+/* jshint browser: true */
 
 define(['lodash'], function(_) {
 
     'use strict';
 
-    var rxDef,
-        empty = '',
+    var empty = '',
         space = ' ',
         colon = ': ',
         newline = '\n',
         cache = {},
         filesToExclude = [],
 
+        isOpera = !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0,
+        isFirefox = typeof InstallTrigger !== 'undefined',
+        isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0,
+        isChrome = !!window.chrome && !isOpera,
+        isIE = /*@cc_on!@*/false || !!document.documentMode,
+
         rx = {
             // TODO: add logic for other browsers
+            ie : {
+                indices: [2, 3, 1],
+                pattern: /\s+?at ([^\(]+).+?(\w+\.js|[\w \$\_]+):(\d+)/i
+            },
             chrome : {
-                matchLength: 5,
                 indices: [3, 4, 1], // file, line, method
                 pattern: /\s+?at ([\w\.\$<>_ ]+(\(anonymous function\))?).+?\/(\w+\.js):(\d+)/i
+            },
+            firefox : {
+                indices: [2, 3, 1], // file, line, method
+                pattern: /([^@\n<]*)?.+?\/(\w+\.js)[: line]+(\d+)/i
             }
         },
+
+        rxDef = isIE ? rx.ie :
+            isFirefox ? rx.firefox :
+            isChrome ? rx.chrome : /\0/,
 
         getCleanStack = function getCleanStack() {
             try {
@@ -37,16 +54,10 @@ define(['lodash'], function(_) {
 
         getParts = _.memoize(function getParts(line) {
 
-            if (rxDef === undefined) {
-                rxDef = rx[_.findKey(rx, function isMatch(def) {
-                    return def.pattern.test(line);
-                })];
-            }
-
             var matches = rxDef.pattern.exec(line),
                 indices = rxDef.indices;
 
-            return [matches[indices[0]], 'line ' + matches[indices[1]], matches[indices[2]].trim()];
+            return !matches ? [] : [matches[indices[0]], 'line ' + matches[indices[1]], (matches[indices[2]] || 'anonymous').trim()];
 
         }),
 
@@ -171,7 +182,9 @@ define(['lodash'], function(_) {
         }
 
         result = result.filter(function notSelf(arr) {
-            return arr[0] !== 'ContextManager.js';
+            return arr[0] !== 'ContextManager.js' &&
+                arr[0].indexOf('eval') === -1 &&
+                arr[0].indexOf('Function') === -1;
         }).filter(function not3rdParty(line) {
             return filesToExclude.every(function test3rdParty(lib) {
                 return line.indexOf(lib) === -1;

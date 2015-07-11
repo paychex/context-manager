@@ -16,6 +16,6 @@ require.config({
     }
 });
 
-require(['angular', 'app'], function(angular, app) {
+require(['angular', 'app'], function bootstrap(angular, app) {
     angular.bootstrap(document.body, [app.name]);
 });
