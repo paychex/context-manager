@@ -4,7 +4,8 @@ define(['lodash'], function(_) {
 
     'use strict';
 
-    var empty = '',
+    var rxDef,
+        empty = '',
         space = ' ',
         colon = ': ',
         newline = '\n',
@@ -34,27 +35,25 @@ define(['lodash'], function(_) {
             }
         },
 
+        getParts = _.memoize(function getParts(line) {
+
+            if (rxDef === undefined) {
+                rxDef = rx[_.findKey(rx, function isMatch(def) {
+                    return def.pattern.test(line);
+                })];
+            }
+
+            var matches = rxDef.pattern.exec(line),
+                indices = rxDef.indices;
+
+            return [matches[indices[0]], 'line ' + matches[indices[1]], matches[indices[2]].trim()];
+
+        }),
+
         getStackParts = function getStackParts(stack) {
             return stack
                 .split(newline)
-                .map(function getParts(line) {
-                    var parts = [];
-
-                    // TODO: we can shortcut this by caching the
-                    // matching regexp so we don't have to go through
-                    // other browsers unnecessarily
-
-                    _.forIn(rx, function getPattern(def) {
-                        var indices = def.indices,
-                            matches = def.pattern.exec(line),
-                            isMatch = matches.length === def.matchLength;
-                        if (isMatch) {
-                            parts = [matches[indices[0]], 'line ' + matches[indices[1]], matches[indices[2]].trim()];
-                        }
-                        return !isMatch;
-                    });
-                    return parts;
-                })
+                .map(getParts)
                 .filter(function isMatch(arr) {
                     return arr.length === 3;
                 });
