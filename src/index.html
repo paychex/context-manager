@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Context Manager</title>
+        <script type="text/javascript" src="../bower_components/requirejs/require.js" data-main="main.js"></script>
+    </head>
+    <body ng-controller="AppController as AC">
+        <button id="windowMethodA">window.methodA</button>
+        <button ng-click="AC.methodA()">methodA</button>
+        <button ng-click="AC.methodB()" id="buttonB" class="classB1 classB2">methodB</button>
+        <button ng-click="AC.repeat()">repeat (toggle)</button>
+    </body>
+</html>
