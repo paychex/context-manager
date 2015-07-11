@@ -58,6 +58,11 @@ define([
                 }
             };
 
+            this.concurrent = function concurrent() {
+                setTimeout(ctrl.methodB, 10);
+                setTimeout(ctrl.methodC, 10);
+            };
+
             document.querySelector('#windowMethodA').addEventListener('click', this.methodA);
 
         }]);
