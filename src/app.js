@@ -37,6 +37,14 @@ define([
             var ctrl = this,
                 token = null;
 
+            ContextManager.getCurrentContext().onError(function handler(e) {
+                e.handled = true;
+                console.group('Error in context: ' + e.context.name);
+                console.log(e.error.message);
+                console.log(e.stack);
+                console.groupEnd();
+            });
+
             this.methodA = function methodA() {
                 setTimeout(ctrl.methodB, 10);
             };
@@ -61,6 +69,16 @@ define([
             this.concurrent = function concurrent() {
                 setTimeout(ctrl.methodB, 10);
                 setTimeout(ctrl.methodC, 10);
+            };
+
+            this.throwError = function throwError() {
+                var count = 0,
+                    token = setInterval(function inner() {
+                        if (++count === 3) {
+                            clearInterval(token);
+                            throw new Error('Unexpected error!');
+                        }
+                    }, 1000);
             };
 
             document.querySelector('#windowMethodA').addEventListener('click', this.methodA);

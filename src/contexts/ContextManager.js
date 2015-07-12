@@ -38,17 +38,21 @@ define(['lodash'], function(_) {
             isFirefox ? rx.firefox :
             isChrome ? rx.chrome : /\0/,
 
+        sanitize = function sanitize(stack) {
+            return stack
+                .split(newline)
+                .filter(function isLine(line) {
+                    return line.indexOf('Error') !== 0 &&
+                        line.indexOf('_ignore_') === -1;
+                })
+                .join(newline);
+        },
+
         getCleanStack = function getCleanStack() {
             try {
                 throw new Error();
             } catch (e) {
-                return e.stack
-                    .split(newline)
-                    .filter(function isLine(line) {
-                        return line.indexOf('Error') === -1 &&
-                            line.indexOf('_ignore_') === -1;
-                    })
-                    .join(newline);
+                return sanitize(e.stack);
             }
         },
 
@@ -116,7 +120,7 @@ define(['lodash'], function(_) {
                 error: e,
                 context: this,
                 handled: false,
-                stack: ContextManager.getCurrentStack()
+                stack: ContextManager.getCurrentStack(e)
             },
 
             callErrorHandlers = function callErrorHandler(handler) {
@@ -152,9 +156,9 @@ define(['lodash'], function(_) {
         child.run(fn);
     };
 
-    ContextManager.getCurrentContext = function getCurrentContext() {
+    ContextManager.getCurrentContext = function getCurrentContext(optStack) {
 
-        var stack = getCleanStack(),
+        var stack = !!optStack ? sanitize(optStack) : getCleanStack(),
             parts = getStackParts(stack),
             context = _.findLast(parts, function isContext(arr) {
                 return /__Context\d+/.test(arr[2]);
@@ -167,13 +171,13 @@ define(['lodash'], function(_) {
 
     };
 
-    ContextManager.getCurrentStack = function getCurrentStack() {
+    ContextManager.getCurrentStack = function getCurrentStack(e) {
 
         var sep = empty,
             tab = empty,
             context = '\u2192 in context',
             result = [],
-            target = ContextManager.getCurrentContext();
+            target = ContextManager.getCurrentContext(e ? e.stack : undefined);
 
         while (!!target) {
             result = result.concat(target.stack);

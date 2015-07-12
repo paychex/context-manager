@@ -21,7 +21,7 @@ define(['angular', './DOMEvents'], function(angular, DOMEvents) {
                         element.on(eventName.toLowerCase(), function _ignore_EventHandler(event) {
                             var fnBound = fn.bind(null, scope, {$event:event}),
                                 contextName = DOMEvents.prettify(event.target, ngEventName);
-                            scope.$apply(function eventHandler() {
+                            scope.$apply(function invokeHandler() {
                                 ContextManager.runInChildContext(parent, contextName, fnBound);
                             });
                         });
