@@ -22,6 +22,7 @@ define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
                             var fnBound = fn.bind(null, scope, {$event:event}),
                                 contextName = DOMEvents.prettify(event.target, ngEventName);
                             scope.$apply(function invokeHandler() {
+                                // TODO: remove child context (and children) on $destroy
                                 ContextManager.runInChildContext(parent, contextName, fnBound);
                             });
                         });

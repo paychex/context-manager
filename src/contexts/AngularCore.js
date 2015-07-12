@@ -30,8 +30,7 @@ define(['lodash', 'angular'], function(_, angular) {
 
                 mod[target] = function _ignore_(name) {
                     try {
-                        var args = [].slice.call(arguments);
-                        return fn.apply(angular, args);
+                        return fn.apply(angular, arguments);
                     } catch (e) {
                         parent.handleError(e);
                     }

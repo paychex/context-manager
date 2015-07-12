@@ -83,6 +83,24 @@ define(['lodash'], function(_) {
         this.stack = getStackParts(getCleanStack());
         cache[this.id] = this;
 
+        this.toString = function toString() {
+            var res = [],
+                target = this,
+                corner = '\u2514 ';
+            while (!!target) {
+                res[res.length] = target.name;
+                target = target.parent;
+            }
+            return res.reverse().map(function map(item, i) {
+                return i === 0 ? item : [
+                    newline,
+                    new Array(i << 1).join(space),
+                    corner,
+                    item
+                ].join(empty);
+            }).join(empty).trim();
+        };
+
     }
 
     Context.prototype.parent = null;

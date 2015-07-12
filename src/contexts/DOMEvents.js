@@ -7,19 +7,20 @@ define(['lodash'], function(_) {
 
     var initialize = _.once(function init(ContextManager) {
 
-        function wrappedAddListener(obj) {
+        function wrapAddListener(obj) {
             var ael = obj.addEventListener;
             obj.addEventListener = function _ignore_AddEventListener(type, handler, capture) {
                 var parent = ContextManager.getCurrentContext();
                 return ael.call(this, type, function addEventListener(e) {
-                    ContextManager.runInChildContext(parent, initialize.prettify(e.target, type), handler.bind(null, e));
+                    // TODO: remove child context (and children) when element destroyed (MutationObserver?)
+                    return ContextManager.runInChildContext(parent, initialize.prettify(e.target, type), handler.bind(null, e));
                 }, capture);
             };
         }
 
-        wrappedAddListener(window);
-        wrappedAddListener(window.Element.prototype);
-        wrappedAddListener(window.Document.prototype);
+        wrapAddListener(window);
+        wrapAddListener(window.Element.prototype);
+        wrapAddListener(window.Document.prototype);
 
     });
 

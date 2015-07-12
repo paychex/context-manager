@@ -53,6 +53,8 @@ define([
             };
 
             this.methodB = function methodB() {
+                // uncomment to see internal error handling:
+                // null.doSomething();
                 setTimeout(ctrl.methodC, 10);
             };
 
@@ -67,6 +69,10 @@ define([
                 } else {
                     token = setInterval(ctrl.methodA, 2000);
                 }
+            };
+
+            this.frame = function frame() {
+                requestAnimationFrame(ctrl.methodB);
             };
 
             this.concurrent = function concurrent() {
