@@ -5,7 +5,7 @@ define(['lodash'], function(_) {
 
     'use strict';
 
-    return function initialize(ContextManager) {
+    return _.once(function initialize(ContextManager) {
 
         window.setTimeout = _.wrap(window.setTimeout, function _ignore_SetTimeout(st) {
             var args = [].slice.call(arguments, 1),
@@ -23,6 +23,6 @@ define(['lodash'], function(_) {
             }, args[1] || 0);
         });
 
-    };
+    });
 
 });

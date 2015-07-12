@@ -5,7 +5,7 @@ define(['lodash'], function(_) {
 
     'use strict';
 
-    function initialize(ContextManager) {
+    var initialize = _.once(function init(ContextManager) {
 
         function wrappedAddListener(obj) {
             var ael = obj.addEventListener;
@@ -21,7 +21,7 @@ define(['lodash'], function(_) {
         wrappedAddListener(window.Element.prototype);
         wrappedAddListener(window.Document.prototype);
 
-    }
+    });
 
     initialize.prettify = function prettify(node, eventType) {
         return node.localName +

@@ -94,7 +94,7 @@ define(['lodash'], function(_) {
             var wrap,
                 wrapper =
                     'wrap = function __' + this.id + '() {' +
-                    '   return fn.apply(null, arguments);' +
+                    '   return fn.apply(fn, arguments);' +
                     '};';
             /* jshint -W061 */
             eval(wrapper);
@@ -112,16 +112,22 @@ define(['lodash'], function(_) {
         };
     };
 
+    function ContextError(causedBy, context, stack) {
+        this.stack = ContextManager.getCurrentStack(causedBy);
+        this.context = context;
+        this.handled = false;
+        this.name = causedBy.name;
+        this.message = causedBy.message;
+    }
+
+    ContextError.prototype = Object.create(Error.prototype);
+    ContextError.prototype.constructor = ContextError;
+
     Context.prototype.handleError = function handleError(e) {
 
         var target = this,
 
-            errorArgs = {
-                error: e,
-                context: this,
-                handled: false,
-                stack: ContextManager.getCurrentStack(e)
-            },
+            errorArgs = new ContextError(e, this, ContextManager.getCurrentStack()),
 
             callErrorHandlers = function callErrorHandler(handler) {
                 handler(errorArgs);
@@ -149,11 +155,15 @@ define(['lodash'], function(_) {
         filesToExclude = filesToExclude.concat(_.flatten(_.toArray(arguments)));
     };
 
-    ContextManager.runInChildContext = function runInChildContext(parent, childName, fn) {
+    ContextManager.createChildContext = function createChildContext(parent, childName) {
         var child = new Context(childName);
         parent.children[parent.children.length] = child;
         child.parent = Object.create(parent);
-        child.run(fn);
+        return child;
+    };
+
+    ContextManager.runInChildContext = function runInChildContext(parent, childName, fn) {
+        return ContextManager.createChildContext(parent, childName).run(fn);
     };
 
     ContextManager.getCurrentContext = function getCurrentContext(optStack) {

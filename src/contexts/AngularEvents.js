@@ -1,12 +1,12 @@
 /* global define: false */
 
-define(['angular', './DOMEvents'], function(angular, DOMEvents) {
+define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
 
     'use strict';
 
     var eventsToHandle = ['Click'];
 
-    return function initialize(ContextManager, $provide) {
+    return _.once(function initialize(ContextManager, $provide) {
 
         var $parse = angular.injector(['ng']).get('$parse');
 
@@ -31,6 +31,6 @@ define(['angular', './DOMEvents'], function(angular, DOMEvents) {
             });
         });
 
-    };
+    });
 
 });

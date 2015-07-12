@@ -7,6 +7,7 @@ define([
     './contexts/ContextManager',
     './contexts/Timeouts',
     './contexts/DOMEvents',
+    './contexts/AngularCore',
     './contexts/AngularEvents'
 ], function(
     angular,
@@ -14,6 +15,7 @@ define([
     ContextManager,
     initTimeouts,
     initDOMEvents,
+    initAngularCore,
     initAngularEvents
 ) {
 
@@ -21,6 +23,7 @@ define([
 
     initTimeouts(ContextManager);
     initDOMEvents(ContextManager);
+    initAngularCore(ContextManager);
     ContextManager.excludeFiles(
         'lodash.js',
         'angular.js',
@@ -40,8 +43,8 @@ define([
             ContextManager.getCurrentContext().onError(function handler(e) {
                 e.handled = true;
                 console.group('Error in context: ' + e.context.name);
-                console.log(e.error.message);
-                console.log(e.stack);
+                console.error(e.message);
+                console.info(e.stack);
                 console.groupEnd();
             });
 
