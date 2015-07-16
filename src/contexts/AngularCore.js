@@ -42,6 +42,7 @@ define(['lodash', 'angular'], function(_, angular) {
 
             mod.onError = function onError(handler) {
                 parent.onError(handler);
+                return mod;
             };
 
             return mod;
