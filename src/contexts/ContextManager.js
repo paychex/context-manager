@@ -79,6 +79,7 @@ define(['lodash'], function(_) {
     function Context(name) {
 
         this.name = name;
+        this.refCount = 0;
         this.id = _.uniqueId('Context');
         this.stack = getStackParts(getCleanStack());
         cache[this.id] = this;
@@ -107,12 +108,35 @@ define(['lodash'], function(_) {
     Context.prototype.children = [];
     Context.prototype.handlers = [];
 
+    Context.prototype.incRefCount = function increment() {
+        this.refCount++;
+    };
+
+    Context.prototype.decRefCount = function decrement() {
+        if (--this.refCount === 0) {
+            if (this.parent) {
+                this.parent.decRefCount();
+            }
+            this.parent.children.splice(this.parent.children.indexOf(this), 1);
+            this.children.length = 0;
+            this.handlers.length = 0;
+            delete this.stack;
+            delete this.children;
+            delete this.handlers;
+            delete cache[this.id];
+        }
+    };
+
     Context.prototype.run = function run(fn) {
         try {
             var wrap,
+                ctx = this,
                 wrapper =
                     'wrap = function __' + this.id + '() {' +
-                    '   return fn.apply(fn, arguments);' +
+                    '   ctx.incRefCount();' +
+                    '   var res = fn.apply(fn, arguments);' +
+                    '   ctx.decRefCount();' +
+                    '   return res;' +
                     '};';
             /* jshint -W061 */
             eval(wrapper);
@@ -120,6 +144,7 @@ define(['lodash'], function(_) {
             return wrap();
         } catch (e) {
             this.handleError(e);
+            ctx.decRefCount();
         }
     };
 
