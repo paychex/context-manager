@@ -12,7 +12,9 @@ define(['lodash'], function(_) {
             obj.addEventListener = function _ignore_AddEventListener(type, handler, capture) {
                 var parent = ContextManager.getCurrentContext(),
                     eventHandler = function handleEvent(e) {
-                        return ContextManager.runInChildContext(parent, initialize.prettify(e.target, type), handler.bind(null, e));
+                        var method = handler.bind(null, e),
+                            childName = initialize.prettify(e.target, type);
+                        return parent.fork(childName, method);
                     };
                 parent.incRefCount();
                 // TODO: switch to mutation observer?
@@ -20,7 +22,7 @@ define(['lodash'], function(_) {
                 // we get false positives? we'd need to make sure
                 // the node is actually being garbage collected
                 ael('$destroy', function cleanUp() {
-                    parent.decRefCount();
+                    parent.delete();
                     obj.removeEventListener(type, eventHandler);
                 }, false);
                 return ael.call(this, type, eventHandler, capture);

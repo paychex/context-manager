@@ -1,7 +1,7 @@
 /* global define: false */
 /* jshint browser: true */
 
-define(['lodash'], function(_) {
+define(['lodash', './Timeouts'], function(_, Timeouts) {
 
     'use strict';
 
@@ -9,7 +9,9 @@ define(['lodash'], function(_) {
         space = ' ',
         colon = ': ',
         newline = '\n',
+
         cache = {},
+        garbage = [],
         filesToExclude = [],
 
         isOpera = !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0,
@@ -74,20 +76,103 @@ define(['lodash'], function(_) {
                 });
         },
 
-        DEFAULT = new Context('global');
+        DEFAULT = new Context('global'),
+
+        canCollect = function canCollect(entry) {
+            if (entry.refCount > 0) {
+                return false;
+            }
+            return !entry.children ||
+                entry.children.length === 0 ||
+                entry.children.every(canCollect);
+        },
+
+        deleteEntry = function deleteEntry(entry) {
+            entry.children.forEach(deleteEntry);
+            entry.stack.length = 0;
+            entry.isolateStack.length = 0;
+            entry.children.length = 0;
+            entry.handlers.length = 0;
+            if (entry.parent && entry.parent.children) {
+                entry.parent.children.splice(
+                    entry.parent.children.indexOf(entry), 1);
+            }
+            delete cache[entry.id];
+        },
+
+        getCurrentStack = function getCurrentStack(e) {
+
+            var sep = empty,
+                tab = empty,
+                result = [],
+                context = '\u2192 in context',
+                target = ContextManager.getCurrentContext(e ? e.stack : undefined);
+
+            while (!!target) {
+                result = result.concat(target.isolateStack);
+                result.push([context, empty, target.name]);
+                target = target.parent;
+            }
+
+            result = result.filter(function notSelf(arr) {
+                return arr[0] !== 'ContextManager.js' &&
+                    arr[0].indexOf('eval') === -1 &&
+                    arr[0].indexOf('Function') === -1;
+            }).filter(function not3rdParty(line) {
+                return filesToExclude.every(function test3rdParty(lib) {
+                    return line.indexOf(lib) === -1;
+                });
+            });
+
+            return _.reduce(result, function formatParts(res, arr, index) {
+                var out = [];
+                if (!_.isEqual(result[index], result[index - 1])) {
+                    out = [sep, tab, arr[0], space, arr[1], colon, arr[2]];
+                    sep = newline;
+                    if (arr[0].indexOf(context) !== -1) {
+                        tab += space;
+                        tab += space;
+                    }
+                }
+                return res + out.join(empty);
+            }, empty);
+
+        };
+
+    setInterval(function verifyCanCollect() {
+        var count = garbage.length,
+            entry = garbage.shift();
+        while (count-- && !!entry) {
+            if (canCollect(entry)) {
+                deleteEntry(entry);
+            } else {
+                garbage.push(entry);
+            }
+            entry = garbage.shift();
+        }
+    }, 1000);
+
+    function ContextError(causedBy, context) {
+        this.stack = getCurrentStack(causedBy);
+        this.context = context;
+        this.handled = false;
+        this.name = causedBy.name;
+        this.message = causedBy.message;
+    }
+
+    ContextError.prototype = Object.create(Error.prototype);
+    ContextError.prototype.constructor = ContextError;
 
     function Context(name) {
-
         this.name = name;
         this.refCount = 0;
         this.id = _.uniqueId('Context');
+        this.isolateStack = [];
         this.stack = getStackParts(getCleanStack());
         this.parent = null;
         this.children = [];
         this.handlers = [];
-
         cache[this.id] = this;
-
     }
 
     Context.prototype.toString = function toString() {
@@ -108,55 +193,55 @@ define(['lodash'], function(_) {
         }).join(empty).trim();
     };
 
-    Context.prototype.incRefCount = function increment() {
+    Context.prototype.delete = function deleteContext() {
+        this.refCount = 0;
+        garbage.push(this);
+    };
+
+    Context.prototype.incRefCount = function incRefCount() {
         this.refCount++;
     };
 
-    function noMoreRefs(context) {
-        var target = context;
-        if (target.refCount > 0) {
-            return false;
-        }
-        return !target.children.length || target.children.every(noMoreRefs);
-    }
-
-    function deleteContext(context) {
-        context.children.forEach(deleteContext);
-        context.children.length = 0;
-        context.handlers.length = 0;
-        delete context.stack;
-        delete context.children;
-        delete context.handlers;
-        delete cache[context.id];
-    }
-
-    Context.prototype.decRefCount = function decrement() {
+    Context.prototype.decRefCount = function decRefCount() {
         this.refCount = Math.max(0, --this.refCount);
-        if (noMoreRefs(this)) {
-            deleteContext(this);
-            if (this.parent) {
-                this.parent.children.splice(
-                    this.parent.children.indexOf(this), 1);
-                this.parent.decRefCount();
-            }
-            delete this.parent;
+        if (this.refCount === 0) {
+            this.delete();
         }
     };
 
-    Context.prototype.run = function run(fn) {
+    Context.prototype.createChild = function createChild(name) {
+        var child = new Context(name);
+        this.children[this.children.length] = child;
+        child.parent = this;
+        child.isolateStack = child.stack.concat();
+        child.stack = child.stack.concat(this.stack);
+        return child;
+    };
+
+    Context.prototype.fork = function fork(childName, method, cleanUp) {
+        var child = this.createChild(childName),
+            result = child.run(method, cleanUp);
+        return child.delete(), result;
+    };
+
+    Context.prototype.run = function run(fn, cleanUp) {
         try {
             var wrap,
-                ctx = this,
                 wrapper =
                     'wrap = function __' + this.id + '() {' +
-                    '   var res = fn.apply(fn, arguments);' +
-                    '   return res;' +
+                    '   return fn.apply(fn, arguments);' +
                     '};';
             /* jshint -W061 */
             eval(wrapper);
             /* jshint +W061 */
             return wrap();
         } catch (e) {
+            if (cleanUp) {
+                // give error handlers time to traverse
+                // up the parent chain before cleaning up
+                // this context and its parents
+                Timeouts().origTimeout(cleanUp);
+            }
             this.handleError(e);
         }
     };
@@ -165,25 +250,14 @@ define(['lodash'], function(_) {
         this.handlers[this.handlers.length] = handler;
         return function removeHandler() {
             this.handlers.splice(this.handlers.indexOf(handler), 1);
-        };
+        }.bind(this);
     };
-
-    function ContextError(causedBy, context, stack) {
-        this.stack = ContextManager.getCurrentStack(causedBy);
-        this.context = context;
-        this.handled = false;
-        this.name = causedBy.name;
-        this.message = causedBy.message;
-    }
-
-    ContextError.prototype = Object.create(Error.prototype);
-    ContextError.prototype.constructor = ContextError;
 
     Context.prototype.handleError = function handleError(e) {
 
         var target = this,
 
-            errorArgs = new ContextError(e, this, ContextManager.getCurrentStack()),
+            errorArgs = new ContextError(e, this),
 
             callErrorHandlers = function callErrorHandler(handler) {
                 handler(errorArgs);
@@ -211,21 +285,6 @@ define(['lodash'], function(_) {
         filesToExclude = filesToExclude.concat(_.flatten(_.toArray(arguments)));
     };
 
-    // TODO: privatize?
-    ContextManager.createChildContext = function createChildContext(parent, childName) {
-        var child = new Context(childName);
-        parent.children[parent.children.length] = child;
-        child.parent = Object.create(parent);
-
-        child.stack = child.stack.concat(parent.stack);
-
-        return child;
-    };
-
-    ContextManager.runInChildContext = function runInChildContext(parent, childName, fn) {
-        return ContextManager.createChildContext(parent, childName).run(fn);
-    };
-
     ContextManager.getCurrentContext = function getCurrentContext(optStack) {
 
         var stack = !!optStack ? sanitize(optStack) : getCleanStack(),
@@ -235,46 +294,6 @@ define(['lodash'], function(_) {
             }) || [null, null, empty];
 
         return cache[context[2].substr(2)] || DEFAULT;
-
-    };
-
-    // TODO: privatize?
-    ContextManager.getCurrentStack = function getCurrentStack(e) {
-
-        var sep = empty,
-            tab = empty,
-            context = '\u2192 in context',
-            result = [],
-            target = ContextManager.getCurrentContext(e ? e.stack : undefined);
-
-        while (!!target) {
-            result = result.concat(target.stack);
-            result.push([context, empty, target.name]);
-            target = target.parent;
-        }
-
-        result = result.filter(function notSelf(arr) {
-            return arr[0] !== 'ContextManager.js' &&
-                arr[0].indexOf('eval') === -1 &&
-                arr[0].indexOf('Function') === -1;
-        }).filter(function not3rdParty(line) {
-            return filesToExclude.every(function test3rdParty(lib) {
-                return line.indexOf(lib) === -1;
-            });
-        });
-
-        return _.reduce(result, function formatParts(res, arr, index) {
-            var out = [];
-            if (!_.isEqual(result[index], result[index-1])) {
-                out = [sep, tab, arr[0], space, arr[1], colon, arr[2]];
-                sep = newline;
-                if (arr[0].indexOf(context) !== -1) {
-                    tab += space;
-                    tab += space;
-                }
-            }
-            return res + out.join(empty);
-        }, empty);
 
     };
 

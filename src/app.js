@@ -59,7 +59,7 @@ define([
             };
 
             this.methodC = function methodC() {
-                console.log(ContextManager.getCurrentStack());
+                console.log(ContextManager.getCurrentContext().toString());
             };
 
             this.repeat = function repeat() {
@@ -70,6 +70,8 @@ define([
                     token = setInterval(ctrl.methodA, 2000);
                 }
             };
+
+            // TODO: interval that fires interval that fires interval
 
             this.frame = function frame() {
                 requestAnimationFrame(ctrl.methodB);

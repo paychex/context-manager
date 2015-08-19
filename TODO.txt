@@ -1,5 +1,0 @@
-if we create a child context once per user event, the stacks will be correct but the cache will increase forever
-
-if we create a single child context, the cache will clear but the stacks will be missing the event context on subsequent events
-
-stacks seem wrong now that children and getCurrentContext aren't clones -- we seem to be repeating stacks somewhere

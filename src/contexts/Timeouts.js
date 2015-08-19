@@ -8,14 +8,17 @@ define(['lodash'], function(_) {
     return _.once(function initialize(ContextManager) {
 
         var intervals = {},
-            origSetTimeout = window.setTimeout;
+            origSetTimeout = window.setTimeout.bind(window);
 
         window.setTimeout = _.wrap(window.setTimeout, function _ignore_SetTimeout(st) {
             var args = [].slice.call(arguments, 1),
-                parent = ContextManager.getCurrentContext();
+                parent = ContextManager.getCurrentContext(),
+                fnName = (args[0].name || 'anonymous');
             parent.incRefCount();
             return st(function setTimeout() {
-                ContextManager.runInChildContext(parent, 'setTimeout', args[0]);
+                parent.fork('setTimeout: ' + fnName, args[0], function cleanUp() {
+                    parent.delete();
+                });
                 parent.decRefCount();
             }, args[1] || 0);
         });
@@ -29,39 +32,40 @@ define(['lodash'], function(_) {
         });
 
         window.setInterval = _.wrap(window.setInterval, function _ignore_SetInterval(si) {
-            var args = [].slice.call(arguments, 1),
+            var childContext,
+                args = [].slice.call(arguments, 1),
                 parent = ContextManager.getCurrentContext(),
-                childContext;
+                fnName = (args[0].name || 'anonymous'),
+                cleanUp = function cleanUp() {
+                    parent.delete();
+                };
             parent.incRefCount();
             var token = si(function setInterval() {
                 if (!childContext) {
-                    childContext = ContextManager.createChildContext(parent, 'setInterval');
-                    childContext.onError(function removeInterval() {
-                        // give error handlers time to traverse
-                        // up the parent chain before cleaning up
-                        // this context and its parents
-                        origSetTimeout(function() {
-                            clearInterval(token);
-                        });
-                    });
+                    childContext = parent.createChild('setInterval: ' + fnName);
                 }
-                childContext.run(args[0]);
+                childContext.run(args[0], cleanUp);
             }, args[1] || 0);
-            intervals[token] = function cleanUp() {
-                parent.decRefCount();
-            };
+            intervals[token] = cleanUp;
             return token;
         });
 
         window.requestAnimationFrame = _.wrap(window.requestAnimationFrame, function _ignore_RAF(raf) {
             var args = [].slice.call(arguments, 1),
-                parent = ContextManager.getCurrentContext();
+                parent = ContextManager.getCurrentContext(),
+                fnName = (args[0].name || 'anonymous');
             parent.incRefCount();
             return raf(function requestAnimationFrame() {
-                ContextManager.runInChildContext(parent, 'requestAnimationFrame', args[0]);
+                parent.fork('requestAnimationFrame: ' + fnName, args[0], function cleanUp() {
+                    parent.delete();
+                });
                 parent.decRefCount();
             });
         });
+
+        return {
+            origTimeout: origSetTimeout
+        };
 
     });
 

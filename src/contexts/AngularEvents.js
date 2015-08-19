@@ -22,13 +22,14 @@ define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
                                 var fnBound = fn.bind(null, scope, {$event:event}),
                                     contextName = DOMEvents.prettify(event.target, ngEventName);
                                 scope.$apply(function invokeHandler() {
-                                    ContextManager.runInChildContext(parent, contextName, fnBound);
+                                    return parent.fork(contextName + ': ' + attr[ngEventName], fnBound);
                                 });
                             };
+                        parent.incRefCount();
                         element.on(eventName.toLowerCase(), handler);
                         element.on('$destroy', function cleanUp() {
                             element.off(eventName.toLowerCase(), handler);
-                            parent.decRefCount();
+                            parent.delete();
                         });
                     };
                 };
