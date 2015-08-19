@@ -84,7 +84,6 @@ define([
                 var count = 0,
                     token = setInterval(function inner() {
                         if (++count === 3) {
-                            clearInterval(token);
                             throw new Error('Unexpected error!');
                         }
                     }, 1000);

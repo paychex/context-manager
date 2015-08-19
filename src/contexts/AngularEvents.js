@@ -17,14 +17,18 @@ define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
                 orig.compile = function compile($element, attr) {
                     var fn = $parse(attr[ngEventName], /* interceptorFn */ null, /* expensiveChecks */ true);
                     return function ngEventHandler(scope, element) {
-                        var parent = ContextManager.getCurrentContext();
-                        element.on(eventName.toLowerCase(), function _ignore_EventHandler(event) {
-                            var fnBound = fn.bind(null, scope, {$event:event}),
-                                contextName = DOMEvents.prettify(event.target, ngEventName);
-                            scope.$apply(function invokeHandler() {
-                                // TODO: remove child context (and children) on $destroy
-                                ContextManager.runInChildContext(parent, contextName, fnBound);
-                            });
+                        var parent = ContextManager.getCurrentContext(),
+                            handler = function _ignore_EventHandler(event) {
+                                var fnBound = fn.bind(null, scope, {$event:event}),
+                                    contextName = DOMEvents.prettify(event.target, ngEventName);
+                                scope.$apply(function invokeHandler() {
+                                    ContextManager.runInChildContext(parent, contextName, fnBound);
+                                });
+                            };
+                        element.on(eventName.toLowerCase(), handler);
+                        element.on('$destroy', function cleanUp() {
+                            element.off(eventName.toLowerCase(), handler);
+                            parent.decRefCount();
                         });
                     };
                 };

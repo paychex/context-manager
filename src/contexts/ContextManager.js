@@ -82,48 +82,64 @@ define(['lodash'], function(_) {
         this.refCount = 0;
         this.id = _.uniqueId('Context');
         this.stack = getStackParts(getCleanStack());
-        cache[this.id] = this;
+        this.parent = null;
+        this.children = [];
+        this.handlers = [];
 
-        this.toString = function toString() {
-            var res = [],
-                target = this,
-                corner = '\u2514 ';
-            while (!!target) {
-                res[res.length] = target.name;
-                target = target.parent;
-            }
-            return res.reverse().map(function map(item, i) {
-                return i === 0 ? item : [
-                    newline,
-                    new Array(i << 1).join(space),
-                    corner,
-                    item
-                ].join(empty);
-            }).join(empty).trim();
-        };
+        cache[this.id] = this;
 
     }
 
-    Context.prototype.parent = null;
-    Context.prototype.children = [];
-    Context.prototype.handlers = [];
+    Context.prototype.toString = function toString() {
+        var res = [],
+            target = this,
+            corner = '\u2514 ';
+        while (!!target) {
+            res[res.length] = target.name;
+            target = target.parent;
+        }
+        return res.reverse().map(function map(item, i) {
+            return i === 0 ? item : [
+                newline,
+                new Array(i << 1).join(space),
+                corner,
+                item
+            ].join(empty);
+        }).join(empty).trim();
+    };
 
     Context.prototype.incRefCount = function increment() {
         this.refCount++;
     };
 
+    function noMoreRefs(context) {
+        var target = context;
+        if (target.refCount > 0) {
+            return false;
+        }
+        return !target.children.length || target.children.every(noMoreRefs);
+    }
+
+    function deleteContext(context) {
+        context.children.forEach(deleteContext);
+        context.children.length = 0;
+        context.handlers.length = 0;
+        delete context.stack;
+        delete context.children;
+        delete context.handlers;
+        delete cache[context.id];
+    }
+
     Context.prototype.decRefCount = function decrement() {
-        if (--this.refCount === 0) {
+        this.refCount = Math.max(0, --this.refCount);
+        if (noMoreRefs(this)) {
+            deleteContext(this);
             if (this.parent) {
+                this.parent.children.splice(
+                    this.parent.children.indexOf(this), 1);
                 this.parent.decRefCount();
             }
-            this.parent.children.splice(this.parent.children.indexOf(this), 1);
-            this.children.length = 0;
-            this.handlers.length = 0;
-            delete this.stack;
-            delete this.children;
-            delete this.handlers;
-            delete cache[this.id];
+            delete this.parent;
         }
     };
 
@@ -133,9 +149,7 @@ define(['lodash'], function(_) {
                 ctx = this,
                 wrapper =
                     'wrap = function __' + this.id + '() {' +
-                    '   ctx.incRefCount();' +
                     '   var res = fn.apply(fn, arguments);' +
-                    '   ctx.decRefCount();' +
                     '   return res;' +
                     '};';
             /* jshint -W061 */
@@ -144,7 +158,6 @@ define(['lodash'], function(_) {
             return wrap();
         } catch (e) {
             this.handleError(e);
-            ctx.decRefCount();
         }
     };
 
@@ -198,10 +211,14 @@ define(['lodash'], function(_) {
         filesToExclude = filesToExclude.concat(_.flatten(_.toArray(arguments)));
     };
 
+    // TODO: privatize?
     ContextManager.createChildContext = function createChildContext(parent, childName) {
         var child = new Context(childName);
         parent.children[parent.children.length] = child;
         child.parent = Object.create(parent);
+
+        child.stack = child.stack.concat(parent.stack);
+
         return child;
     };
 
@@ -217,13 +234,11 @@ define(['lodash'], function(_) {
                 return /__Context\d+/.test(arr[2]);
             }) || [null, null, empty];
 
-        context = Object.create(cache[context[2].substr(2)] || DEFAULT);
-        context.stack = parts.concat(context.stack);
-
-        return context;
+        return cache[context[2].substr(2)] || DEFAULT;
 
     };
 
+    // TODO: privatize?
     ContextManager.getCurrentStack = function getCurrentStack(e) {
 
         var sep = empty,
