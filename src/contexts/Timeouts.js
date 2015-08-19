@@ -37,12 +37,14 @@ define(['lodash'], function(_) {
                 parent = ContextManager.getCurrentContext(),
                 fnName = (args[0].name || 'anonymous'),
                 cleanUp = function cleanUp() {
+                    childContext.unfreeze();
                     parent.delete();
                 };
             parent.incRefCount();
             var token = si(function setInterval() {
                 if (!childContext) {
                     childContext = parent.createChild('setInterval: ' + fnName);
+                    childContext.freeze();
                 }
                 childContext.run(args[0], cleanUp);
             }, args[1] || 0);

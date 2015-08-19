@@ -38,7 +38,7 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
 
         rxDef = isIE ? rx.ie :
             isFirefox ? rx.firefox :
-            isChrome ? rx.chrome : /\0/,
+                isChrome ? rx.chrome : /\0/,
 
         sanitize = function sanitize(stack) {
             return stack
@@ -79,8 +79,15 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         DEFAULT = new Context('global'),
 
         canCollect = function canCollect(entry) {
-            if (entry.refCount > 0) {
+            if (entry.refCount > 0 || entry.frozen) {
                 return false;
+            }
+            var parent = entry.parent;
+            while (!!parent) {
+                if (parent.frozen) {
+                    return false;
+                }
+                parent = parent.parent;
             }
             return !entry.children ||
                 entry.children.length === 0 ||
@@ -209,6 +216,14 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         }
     };
 
+    Context.prototype.freeze = function freeze() {
+        this.frozen = true;
+    };
+
+    Context.prototype.unfreeze = function unfreeze() {
+        this.frozen = false;
+    };
+
     Context.prototype.createChild = function createChild(name) {
         var child = new Context(name);
         this.children[this.children.length] = child;
@@ -290,8 +305,8 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         var stack = !!optStack ? sanitize(optStack) : getCleanStack(),
             parts = getStackParts(stack),
             context = _.findLast(parts, function isContext(arr) {
-                return /__Context\d+/.test(arr[2]);
-            }) || [null, null, empty];
+                    return /__Context\d+/.test(arr[2]);
+                }) || [null, null, empty];
 
         return cache[context[2].substr(2)] || DEFAULT;
 
