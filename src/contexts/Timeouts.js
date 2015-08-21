@@ -8,7 +8,8 @@ define(['lodash'], function(_) {
     return _.once(function initialize(ContextManager) {
 
         var intervals = {},
-            origSetTimeout = window.setTimeout.bind(window);
+            origSetTimeout = window.setTimeout.bind(window),
+            origSetInterval = window.setInterval.bind(window);
 
         window.setTimeout = _.wrap(window.setTimeout, function _ignore_SetTimeout(st) {
             var args = [].slice.call(arguments, 1),
@@ -66,7 +67,8 @@ define(['lodash'], function(_) {
         });
 
         return {
-            origTimeout: origSetTimeout
+            origTimeout: origSetTimeout,
+            origInterval: origSetInterval
         };
 
     });

@@ -19,26 +19,39 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0,
         isChrome = !!window.chrome && !isOpera,
         isIE = /*@cc_on!@*/false || !!document.documentMode,
+        isPhantom = navigator.userAgent.indexOf('PhantomJS') >= 0,
 
         rx = {
-            // TODO: add logic for other browsers
-            ie : {
+            // TODO: add logic for other browsers (Safari, Opera)
+            ie : [{
                 indices: [2, 3, 1],
                 pattern: /\s+?at ([^\(]+).+?(\w+\.js|[\w \$\_]+):(\d+)/i
-            },
-            chrome : {
+            }],
+            chrome : [{
                 indices: [3, 4, 1], // file, line, method
                 pattern: /\s+?at ([\w\.\$<>_ ]+(\(anonymous function\))?).+?\/(\w+\.js):(\d+)/i
-            },
-            firefox : {
+            }],
+            firefox : [{
                 indices: [2, 3, 1], // file, line, method
                 pattern: /([^@\n<]*)?.+?\/(\w+\.js)[: line]+(\d+)/i
-            }
+            }],
+            phantom: [
+                {
+                    indices: [2, 3, 1],
+                    pattern: /\s+?at (\w+).+?[\/]([^\/]+\.js).+?:(\d+)/i
+                },
+                {
+                    indices: [3, 2, 1],
+                    pattern: /\s+?at (\w+)[^\d]+(\d+)()/i
+                }
+            ]
         },
 
         rxDef = isIE ? rx.ie :
             isFirefox ? rx.firefox :
-                isChrome ? rx.chrome : /\0/,
+                isChrome ? rx.chrome :
+                    isPhantom ? rx.phantom :
+                        rx.chrome,
 
         sanitize = function sanitize(stack) {
             return stack
@@ -60,10 +73,19 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
 
         getParts = _.memoize(function getParts(line) {
 
-            var matches = rxDef.pattern.exec(line),
-                indices = rxDef.indices;
+            for(var i = 0, l = rxDef.length; i < l; i++) {
 
-            return !matches ? [] : [matches[indices[0]], 'line ' + matches[indices[1]], (matches[indices[2]] || 'anonymous').trim()];
+                var def = rxDef[i],
+                    matches = def.pattern.exec(line),
+                    indices = def.indices;
+
+                if (!!matches) {
+                    return [matches[indices[0]], 'line ' + matches[indices[1]], (matches[indices[2]] || 'anonymous').trim()];
+                }
+
+            }
+
+            return [];
 
         }),
 
@@ -79,7 +101,7 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         DEFAULT = new Context('global'),
 
         canCollect = function canCollect(entry) {
-            if (entry.refCount > 0 || entry.frozen) {
+            if (entry.refCount > 0 || entry.frozen || entry.name === 'global') {
                 return false;
             }
             var parent = entry.parent;
@@ -144,20 +166,22 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
                 return res + out.join(empty);
             }, empty);
 
+        },
+
+        attemptCollection = function attemptCollection() {
+            var count = garbage.length,
+                entry = garbage.shift();
+            while (count-- && !!entry) {
+                if (canCollect(entry)) {
+                    deleteEntry(entry);
+                } else {
+                    garbage.push(entry);
+                }
+                entry = garbage.shift();
+            }
         };
 
-    setInterval(function verifyCanCollect() {
-        var count = garbage.length,
-            entry = garbage.shift();
-        while (count-- && !!entry) {
-            if (canCollect(entry)) {
-                deleteEntry(entry);
-            } else {
-                garbage.push(entry);
-            }
-            entry = garbage.shift();
-        }
-    }, 1000);
+    setInterval(attemptCollection, 1000);
 
     function ContextError(causedBy, context) {
         this.stack = getCurrentStack(causedBy);
@@ -201,6 +225,9 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
     };
 
     Context.prototype.delete = function deleteContext() {
+        if (this.name === 'global') {
+            return;
+        }
         this.refCount = 0;
         garbage.push(this);
     };
@@ -244,7 +271,7 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
             var wrap,
                 wrapper =
                     'wrap = function __' + this.id + '() {' +
-                    '   return fn.apply(fn, arguments);' +
+                    '  return fn.apply(fn, arguments);' +
                     '};';
             /* jshint -W061 */
             eval(wrapper);
@@ -311,6 +338,8 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         return cache[context[2].substr(2)] || DEFAULT;
 
     };
+
+    ContextManager.attemptCollection = attemptCollection;
 
     return ContextManager;
 
