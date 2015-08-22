@@ -67,11 +67,11 @@ define([], function() {
 
     function verify(success, fail) {
         var msg,
-            matcher,
             ok = true,
             args = [].slice.call(arguments, 2);
         return function(manager) {
-            while (matcher = args.shift()) {
+            for(var i = 0, l = args.length; i < l; i++) {
+                var matcher = args[i];
                 if (ok && !matcher(manager)) {
                     ok = false;
                     msg = matcher.message;
@@ -92,18 +92,17 @@ define([], function() {
                     after(manager);
                 }
             });
-            methods.forEach(function(method) {
-                method(manager);
-            });
+            for(var i = 0, l = methods.length; i < l; i++) {
+                origSetTimeout(methods[i].bind(null, manager));
+            }
         };
     }
 
     function timeout(ms) {
-        var method,
-            args = [].slice.call(arguments, 1);
+        var args = [].slice.call(arguments, 1);
         return function(manager) {
-            while (method = args.shift()) {
-                setTimeout(method.bind(null, manager));
+            for(var i = 0, l = args.length; i < l; i++) {
+                setTimeout(args[i].bind(null, manager));
             }
         };
     }
@@ -113,27 +112,24 @@ define([], function() {
         if (args[0].prototype === Array.prototype) {
             args.splice(0, 0, 1); // insert default max of 1
         }
-        var method,
-            max = args.shift();
+        var max = args.shift();
         return function(manager) {
-            while(method = args.shift()) {
-                var count = 0;
-                var token = setInterval(function invokeMethod(fn) {
-                    if (++count === max) {
+            for(var i = 0, l = args.length; i < l; i++) {
+                var token = setInterval(function invokeMethod(fn, invoke) {
+                    if (++invoke.count === max) {
                         clearInterval(token);
                     }
                     fn(manager);
-                }.bind(null, method), ms);
+                }.bind(null, args[i], {count: 0}), ms);
             }
         };
     }
 
     function animate() {
-        var method,
-            args = [].slice.call(arguments);
+        var args = [].slice.call(arguments);
         return function(manager) {
-            while(method = args.shift()) {
-                requestAnimationFrame(method.bind(null, manager));
+            for(var i = 0, l = args.length; i < l; i++) {
+                requestAnimationFrame(args[i].bind(null, manager));
             }
         };
     }

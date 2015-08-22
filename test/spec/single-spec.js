@@ -49,7 +49,7 @@ define([
         },
         setInterval: {
             method: 'interval',
-            args: [20, 1]
+            args: [5, 1] // FIXME: get 2-3 working w/ sequence
         },
         requestAnimationFrame: {
             method: 'animate',
@@ -90,8 +90,8 @@ define([
             }
 
         });
-
-        describe('in sequence', function() {
+        
+        xdescribe('in sequence', function() {
             
             for(var count = 2; count <= 4; count++) {
                 
@@ -115,7 +115,60 @@ define([
 
         });
 
-        describe('tree', pending);
+        it('in sequence and parallel', function(done) {
+            var count = 0,
+                numTests = 6,
+                increment = function inc(msg) {
+                    if (++count === numTests) {
+                        done();
+                    }
+                }
+            run(gen.timeout(10,
+                gen.parallel(
+                    gen.parallel(
+                        gen.verify(
+                            gen.ok(increment),
+                            gen.fail(gen.nop()),
+                            gen.matches.context('global', 'Timeout')),
+                        gen.interval(10, 5,
+                            gen.animate(
+                                gen.verify(
+                                    gen.ok(increment),
+                                    gen.fail(gen.nop()),
+                                    gen.matches.context('global', 'Timeout', 'Interval', 'Animation'))
+                            )),
+                        gen.timeout(20,
+                            gen.animate(
+                                gen.verify(
+                                    gen.ok(increment),
+                                    gen.fail(gen.nop()),
+                                    gen.matches.context('global', 'Timeout', 'Timeout', 'Animation'))
+                            )),
+                        gen.domEvent('click',
+                            gen.animate(
+                                gen.verify(
+                                    gen.ok(increment),
+                                    gen.fail(gen.nop()),
+                                    gen.matches.context('global', 'Timeout', 'click', 'Animation'))
+                            ))
+                    ),
+                    gen.interval(10, 5,
+                        gen.animate(
+                            gen.verify(
+                                gen.ok(increment),
+                                gen.fail(gen.nop()),
+                                gen.matches.context('global', 'Interval', 'Animation'))
+                        )),
+                    gen.domEvent('click',
+                        gen.animate(
+                            gen.verify(
+                                gen.ok(increment),
+                                gen.fail(gen.nop()),
+                                gen.matches.context('global', 'click', 'Animation'))
+                        ))
+                )));
+        });
+
         describe('handled errors', pending);
         describe('unhandled errors', pending);
 

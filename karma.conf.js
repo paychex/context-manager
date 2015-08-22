@@ -24,6 +24,7 @@ module.exports = function(config) {
 
         autoWatch: true,
         singleRun: false,
+        captureTimeout: 120000,
 
         reporters: ['story', 'coverage'],
 
