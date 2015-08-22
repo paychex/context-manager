@@ -99,11 +99,12 @@ define([], function() {
     }
 
     function timeout(ms) {
-        var args = [].slice.call(arguments, 1);
+        var method,
+            args = [].slice.call(arguments, 1);
         return function(manager) {
-            args.forEach(function(method) {
-                setTimeout(method.bind(null, manager), ms);
-            });
+            while (method = args.shift()) {
+                setTimeout(method.bind(null, manager));
+            }
         };
     }
 
@@ -112,26 +113,28 @@ define([], function() {
         if (args[0].prototype === Array.prototype) {
             args.splice(0, 0, 1); // insert default max of 1
         }
-        var max = args.shift();
+        var method,
+            max = args.shift();
         return function(manager) {
-            args.forEach(function(method) {
+            while(method = args.shift()) {
                 var count = 0;
-                var token = setInterval(function invokeMethod() {
+                var token = setInterval(function invokeMethod(fn) {
                     if (++count === max) {
                         clearInterval(token);
                     }
-                    method(manager);
-                }, ms);
-            });
+                    fn(manager);
+                }.bind(null, method), ms);
+            }
         };
     }
 
     function animate() {
-        var args = [].slice.call(arguments);
+        var method,
+            args = [].slice.call(arguments);
         return function(manager) {
-            args.forEach(function(method) {
+            while(method = args.shift()) {
                 requestAnimationFrame(method.bind(null, manager));
-            });
+            }
         };
     }
 

@@ -31,23 +31,25 @@ define([
         for (var i = 0; i < count; i++) {
             arrays.push(arr);
         }
-        return _.reduce(arrays, function(a, b) {
-            return _.flatten(_.map(a, function(x) {
-                return _.map(b, function(y) {
-                    return x.concat([y]);
+        return Array.prototype.reduce.call(arrays, function(a, b) {
+            var ret = [];
+            a.forEach(function(a) {
+                b.forEach(function(b) {
+                    ret.push(a.concat([b]));
                 });
-            }), true);
-        }, [ [] ]);
+            });
+            return ret;
+        }, [[]]);
     }
 
     var methods = {
-        setInterval: {
-            method: 'interval',
-            args: [100, 1]
-        },
         setTimeout: {
             method: 'timeout',
             args: [10]
+        },
+        setInterval: {
+            method: 'interval',
+            args: [20, 1]
         },
         requestAnimationFrame: {
             method: 'animate',
@@ -89,45 +91,31 @@ define([
 
         });
 
-        ddescribe('in sequence', function() {
+        describe('in sequence', function() {
+            
+            for(var count = 2; count <= 4; count++) {
+                
+                cross(Object.keys(methods), count).forEach(function(arrs) {
 
-            it('manual', function(done) {
+                    it(count + ' deep: ' + arrs.join(' > '), function(done) {
 
-                // FIXME: this works in chrome but not in Phantom
-                run(gen.timeout(10,
-                    gen.timeout(10,
-                        gen.verify(
+                        run(arrs.concat().reverse().reduce(function toMethod(last, currentKey) {
+                            var child = methods[currentKey];
+                            return gen[child.method].apply(null, child.args.concat([last]));
+                        },  gen.verify(
                             gen.ok(done),
                             gen.fail(done),
-                            gen.matches.context.apply(null, ['global'].concat(['setTimeout', 'setTimeout']))))));
-
-            });
-
-            //for(var count = 2; count <= 4; count++) {
-            //
-            //    cross(Object.keys(methods), count).forEach(function(arrs) {
-            //
-            //        it(count + ' deep: ' + arrs.join(' > '), function(done) {
-            //
-            //            var fn = arrs.reduce(function toMethod(f, key) {
-            //                var parent = methods[key];
-            //                var child = methods[key];
-            //                return gen[parent.method].apply(null, parent.args.concat([f]));
-            //            });
-            //
-            //            run(fn(gen.verify(
-            //                gen.ok(done),
-            //                gen.fail(done),
-            //                gen.matches.context.apply(null, ['global'].concat(arrs)))));
-            //
-            //        });
-            //
-            //    });
-            //
-            //}
+                            gen.matches.context.apply(null, ['global'].concat(arrs)))));
+            
+                    });
+            
+                });
+            
+            }
 
         });
 
+        describe('tree', pending);
         describe('handled errors', pending);
         describe('unhandled errors', pending);
 
