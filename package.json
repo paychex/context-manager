@@ -9,6 +9,9 @@
     "test": "karma start karma.conf.js",
     "test-single-run": "karma start karma.conf.js  --single-run",
     "preupdate-webdriver": "npm install",
+    "build:dev": "r.js.cmd -o optimize=none baseUrl=. paths.lodash=empty: paths.angular=empty: shim.angular.eports=angular shim.lodash.exports=_ name=index out=build/cm.js",
+    "build:prod": "r.js.cmd -o baseUrl=. paths.lodash=empty: paths.angular=empty: shim.angular.eports=angular shim.lodash.exports=_ name=index out=build/cm.min.js",
+    "build": "npm run-script build:dev && npm run-script build:prod",
     "doc": "./node_modules/.bin/jsdoc -d build/dev/doc -r -c ./jsdoc.conf.json -P ./package.json app/src"
   },
   "author": "Dan Barnes",
