@@ -49,7 +49,7 @@ define([
         },
         setInterval: {
             method: 'interval',
-            args: [5, 1] // FIXME: get 2-3 working w/ sequence
+            args: [5, 3]
         },
         requestAnimationFrame: {
             method: 'animate',
@@ -91,7 +91,7 @@ define([
 
         });
         
-        xdescribe('in sequence', function() {
+        describe('in sequence', function() {
             
             for(var count = 2; count <= 4; count++) {
                 
@@ -115,56 +115,62 @@ define([
 
         });
 
-        it('in sequence and parallel', function(done) {
+        iit('in sequence and parallel', function(done) {
             var count = 0,
                 numTests = 6,
-                increment = function inc(msg) {
-                    if (++count === numTests) {
-                        done();
-                    }
-                }
+                increment = function inc(test) {
+                    return function() {
+                        console.log('ok', test);
+                        if (++count === numTests) {
+                            done();
+                        }
+                    };
+                },
+                error = function err(msg) {
+                    console.error(msg);
+                };
             run(gen.timeout(10,
                 gen.parallel(
                     gen.parallel(
                         gen.verify(
-                            gen.ok(increment),
-                            gen.fail(gen.nop()),
+                            gen.ok(increment(1)),
+                            gen.fail(error),
                             gen.matches.context('global', 'Timeout')),
                         gen.interval(10, 5,
                             gen.animate(
                                 gen.verify(
-                                    gen.ok(increment),
-                                    gen.fail(gen.nop()),
+                                    gen.ok(increment(2)),
+                                    gen.fail(error),
                                     gen.matches.context('global', 'Timeout', 'Interval', 'Animation'))
                             )),
                         gen.timeout(20,
                             gen.animate(
                                 gen.verify(
-                                    gen.ok(increment),
-                                    gen.fail(gen.nop()),
+                                    gen.ok(increment(3)),
+                                    gen.fail(error),
                                     gen.matches.context('global', 'Timeout', 'Timeout', 'Animation'))
                             )),
                         gen.domEvent('click',
                             gen.animate(
                                 gen.verify(
-                                    gen.ok(increment),
-                                    gen.fail(gen.nop()),
+                                    gen.ok(increment(4)),
+                                    gen.fail(error),
                                     gen.matches.context('global', 'Timeout', 'click', 'Animation'))
                             ))
                     ),
                     gen.interval(10, 5,
                         gen.animate(
                             gen.verify(
-                                gen.ok(increment),
-                                gen.fail(gen.nop()),
-                                gen.matches.context('global', 'Interval', 'Animation'))
+                                gen.ok(increment(5)),
+                                gen.fail(error),
+                                gen.matches.context('global', 'Timeout', 'Interval', 'Animation'))
                         )),
                     gen.domEvent('click',
                         gen.animate(
                             gen.verify(
-                                gen.ok(increment),
-                                gen.fail(gen.nop()),
-                                gen.matches.context('global', 'click', 'Animation'))
+                                gen.ok(increment(6)),
+                                gen.fail(error),
+                                gen.matches.context('global', 'Timeout', 'click', 'Animation'))
                         ))
                 )));
         });

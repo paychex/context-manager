@@ -84,16 +84,25 @@ define([], function() {
     function parallel(after) {
         var methods = [].slice.call(arguments, 1);
         return function(manager) {
+            // FIXME: this logic may be wrong -- see if we can
+            // figure out a way to execute code on async done
+            // -- can we rewrite generators to follow a specific
+            // api: generator(options, functions..., callback)?
             var startingContext = manager.getCurrentContext();
             var token = origSetInterval(function() {
                 var currentContext = manager.getCurrentContext();
                 if (currentContext === startingContext) {
+                    console.log('clearing token');
                     origClearInterval(token);
+                    console.log('calling after');
                     after(manager);
+                    console.log('after calling after');
+                } else {
+                    console.log("nope");
                 }
             });
             for(var i = 0, l = methods.length; i < l; i++) {
-                origSetTimeout(methods[i].bind(null, manager));
+                methods[i](manager); // methods are already async
             }
         };
     }
@@ -117,9 +126,9 @@ define([], function() {
             for(var i = 0, l = args.length; i < l; i++) {
                 var token = setInterval(function invokeMethod(fn, invoke) {
                     if (++invoke.count === max) {
+                        fn(manager);
                         clearInterval(token);
                     }
-                    fn(manager);
                 }.bind(null, args[i], {count: 0}), ms);
             }
         };
