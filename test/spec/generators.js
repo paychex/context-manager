@@ -84,22 +84,12 @@ define([], function() {
     function parallel(after) {
         var methods = [].slice.call(arguments, 1);
         return function(manager) {
-            // FIXME: this logic may be wrong -- see if we can
-            // figure out a way to execute code on async done
-            // -- can we rewrite generators to follow a specific
-            // api: generator(options, functions..., callback)?
-            var startingContext = manager.getCurrentContext();
-            var token = origSetInterval(function() {
-                var currentContext = manager.getCurrentContext();
-                if (currentContext === startingContext) {
-                    console.log('clearing token');
-                    origClearInterval(token);
-                    console.log('calling after');
-                    after(manager);
-                    console.log('after calling after');
-                } else {
-                    console.log("nope");
-                }
+            var startingContext = manager.getCurrentContext(),
+                token = origSetInterval(function() {
+                    if (!startingContext.isActive()) {
+                        origClearInterval(token);
+                        startingContext.run(after.bind(null, manager));
+                    }
             });
             for(var i = 0, l = methods.length; i < l; i++) {
                 methods[i](manager); // methods are already async

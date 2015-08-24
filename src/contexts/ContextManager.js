@@ -251,6 +251,12 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         this.frozen = false;
     };
 
+    Context.prototype.isActive = function isActive(context) {
+        context = context || this;
+        return context.children.length > 0 &&
+            context.children.some(isActive);
+    };
+
     Context.prototype.createChild = function createChild(name) {
         var child = new Context(name);
         this.children[this.children.length] = child;

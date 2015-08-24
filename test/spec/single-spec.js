@@ -14,6 +14,8 @@ define([
         window.requestAnimationFrame ||
         window.setTimeout;
 
+    var origST = window.setTimeout.bind(window);
+
     index.initTimeouts();
     index.initDOMEvents();
     index.manager.excludeFiles(
@@ -115,46 +117,47 @@ define([
 
         });
 
-        iit('in sequence and parallel', function(done) {
+        it('in sequence and parallel', function(done) {
             var count = 0,
                 numTests = 6,
-                increment = function inc(test) {
+                increment = function inc() {
                     return function() {
-                        console.log('ok', test);
                         if (++count === numTests) {
                             done();
                         }
                     };
                 },
-                error = function err(msg) {
-                    console.error(msg);
+                error = function err(test) {
+                    return function(msg) {
+                        console.error('error occurred', test, msg);
+                    };
                 };
             run(gen.timeout(10,
                 gen.parallel(
                     gen.parallel(
                         gen.verify(
                             gen.ok(increment(1)),
-                            gen.fail(error),
+                            gen.fail(error(1)),
                             gen.matches.context('global', 'Timeout')),
                         gen.interval(10, 5,
                             gen.animate(
                                 gen.verify(
                                     gen.ok(increment(2)),
-                                    gen.fail(error),
+                                    gen.fail(error(2)),
                                     gen.matches.context('global', 'Timeout', 'Interval', 'Animation'))
                             )),
                         gen.timeout(20,
                             gen.animate(
                                 gen.verify(
                                     gen.ok(increment(3)),
-                                    gen.fail(error),
+                                    gen.fail(error(3)),
                                     gen.matches.context('global', 'Timeout', 'Timeout', 'Animation'))
                             )),
                         gen.domEvent('click',
                             gen.animate(
                                 gen.verify(
                                     gen.ok(increment(4)),
-                                    gen.fail(error),
+                                    gen.fail(error(4)),
                                     gen.matches.context('global', 'Timeout', 'click', 'Animation'))
                             ))
                     ),
@@ -162,21 +165,74 @@ define([
                         gen.animate(
                             gen.verify(
                                 gen.ok(increment(5)),
-                                gen.fail(error),
+                                gen.fail(error(5)),
                                 gen.matches.context('global', 'Timeout', 'Interval', 'Animation'))
                         )),
                     gen.domEvent('click',
                         gen.animate(
                             gen.verify(
                                 gen.ok(increment(6)),
-                                gen.fail(error),
+                                gen.fail(error(6)),
                                 gen.matches.context('global', 'Timeout', 'click', 'Animation'))
                         ))
                 )));
         });
 
-        describe('handled errors', pending);
-        describe('unhandled errors', pending);
+        describe('error handling', function() {
+
+            it('does not propagate if e.handled', function(done) {
+                var root = index.manager.getCurrentContext(),
+                    unsub1 = root.onError(function handler() {
+                        throw new Error('should not be reached');
+                    }),
+                    child = root.createChild('child'),
+                    unsub2 = child.onError(function handler(e) {
+                        e.handled = true;
+                        origST(function() {
+                            unsub1();
+                            unsub2();
+                            done();
+                        });
+                    });
+                child.run(function() {
+                    throw new Error('error message');
+                });
+            });
+
+            it('propagates to parent contexts until handled', function(done) {
+                var root = index.manager.getCurrentContext(),
+                    unsub = root.onError(function handler(e) {
+                        expect(e.context.name).toBe('child');
+                        expect(e.message).toBe('error message');
+                        unsub();
+                        done();
+                    });
+                root.fork('child', function() {
+                    throw new Error('error message');
+                });
+            });
+
+            it('parameter contains error and context data', function(done) {
+                var root = index.manager.getCurrentContext(),
+                    unsub = root.onError(function handler(e) {
+                        expect(e.context.name).toBe('global');
+                        expect(e.message).toBe('error message');
+                        unsub();
+                        done();
+                    });
+                root.handleError(new Error('error message'));
+            });
+
+            it('unhandled errors throw', function(done) {
+                var root = index.manager.getCurrentContext();
+                try {
+                    root.handleError(new Error('error message'));
+                } catch (e) {
+                    done();
+                }
+            });
+
+        });
 
     });
 
