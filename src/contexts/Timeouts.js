@@ -38,7 +38,9 @@ define(['lodash'], function(_) {
                 parent = ContextManager.getCurrentContext(),
                 fnName = (args[0].name || 'anonymous'),
                 cleanUp = function cleanUp() {
-                    childContext.unfreeze();
+                    if (childContext) {
+                        childContext.unfreeze();
+                    }
                     parent.delete();
                 };
             parent.incRefCount();

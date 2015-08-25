@@ -32,7 +32,7 @@ define([
     initTimeouts,
     initDOMEvents,
     initAngularCore,
-    initAngularEvents
+    initAngularEventsFn
 ) {
 
     'use strict';
@@ -48,7 +48,9 @@ define([
         initTimeouts: wrap(initTimeouts),
         initDOMEvents: wrap(initDOMEvents),
         initAngularCore: wrap(initAngularCore),
-        initAngularEvents: wrap(initAngularEvents)
+        initAngularEvents: function initAngularEvents($provide) {
+            initAngularEventsFn(ContextManager, $provide);
+        }
     };
 
 });

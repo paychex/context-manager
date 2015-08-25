@@ -38,7 +38,7 @@ define(['lodash'], function(_) {
     initialize.prettify = function prettify(node, eventType) {
         return node.localName +
             (!!node.id ? '#' + node.id : '') +
-            (!!node.classList.length ?
+            (!!node.classList && node.classList.length ?
                 '.' + [].slice.call(node.classList).join('.') : '') +
             ':' + eventType;
     };
