@@ -187,8 +187,9 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         this.stack = getCurrentStack(causedBy);
         this.context = context;
         this.handled = false;
-        this.name = causedBy.name;
+        this.name = 'ContextError';
         this.message = causedBy.message;
+        this.causedBy = causedBy;
     }
 
     ContextError.prototype = Object.create(Error.prototype);
