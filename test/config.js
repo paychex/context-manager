@@ -40,7 +40,8 @@
             deps: specs,
             paths: {
                 lodash: '../bower_components/lodash/lodash',
-                angular: '../bower_components/angularjs/angular'
+                angular: '../bower_components/angularjs/angular',
+        'error-stack-parser': '../bower_components/error-stack-parser/dist/error-stack-parser.min'
             },
             shim: {
                 angular: {

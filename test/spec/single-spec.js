@@ -220,7 +220,11 @@ define([
                         unsub();
                         done();
                     });
-                root.handleError(new Error('error message'));
+                try {
+                    throw new Error('error message');
+                } catch (e) {
+                    root.handleError(e);
+                }
             });
 
             it('unhandled errors throw', function(done) {
