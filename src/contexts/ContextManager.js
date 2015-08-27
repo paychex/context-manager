@@ -1,7 +1,7 @@
 /* global define: false */
 /* jshint browser: true */
 
-define(['lodash', './Timeouts'], function(_, Timeouts) {
+define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, Timeouts) {
 
     'use strict';
 
@@ -14,84 +14,28 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         garbage = [],
         filesToExclude = [],
 
-        isOpera = !!window.opera || navigator.userAgent.indexOf(' OPR/') >= 0,
-        isFirefox = typeof InstallTrigger !== 'undefined',
-        isSafari = Object.prototype.toString.call(window.HTMLElement).indexOf('Constructor') > 0,
-        isChrome = !!window.chrome && !isOpera,
-        isIE = /*@cc_on!@*/false || !!document.documentMode,
-        isPhantom = navigator.userAgent.indexOf('PhantomJS') >= 0,
-
-        rx = {
-            // TODO: add logic for other browsers (Safari, Opera)
-            ie : [{
-                indices: [2, 3, 1],
-                pattern: /\s+?at ([^\(]+).+?(\w+\.js|[\w \$\_]+):(\d+)/i
-            }],
-            chrome : [{
-                indices: [3, 4, 1], // file, line, method
-                pattern: /\s+?at ([\w\.\$<>_ ]+(\(anonymous function\))?).+?\/(\w+\.js):(\d+)/i
-            }],
-            firefox : [{
-                indices: [2, 3, 1], // file, line, method
-                pattern: /([^@\n<]*)?.+?\/(\w+\.js)[: line]+(\d+)/i
-            }],
-            phantom: [
-                {
-                    indices: [2, 3, 1],
-                    pattern: /\s+?at (\w+).+?[\/]([^\/]+\.js).+?:(\d+)/i
-                },
-                {
-                    indices: [3, 2, 1],
-                    pattern: /\s+?at (\w+)[^\d]+(\d+)()/i
-                }
-            ]
-        },
-
-        rxDef = isIE ? rx.ie :
-            isFirefox ? rx.firefox :
-                isChrome ? rx.chrome :
-                    isPhantom ? rx.phantom :
-                        rx.chrome,
-
-        sanitize = function sanitize(stack) {
-            return stack
-                .split(newline)
-                .filter(function isLine(line) {
-                    return line.indexOf('Error') !== 0 &&
-                        line.indexOf('_ignore_') === -1;
-                })
-                .join(newline);
+        sanitize = function sanitize(stackframes) {
+            return stackframes
+                .filter(function isLine(frame) {
+                    return frame.functionName && frame.functionName.indexOf('_ignore_') === -1;
+                });
         },
 
         getCleanStack = function getCleanStack() {
             try {
                 throw new Error();
             } catch (e) {
-                return sanitize(e.stack);
+                e.stack = e.stack ? e.stack.replace(/ line (\d+) \> eval.+/g, ':$1') : '';
+                return sanitize(StackParser.parse(e));
             }
         },
 
-        getParts = _.memoize(function getParts(line) {
+        getParts = function getParts(frame) {
+            return [frame.fileName.split('/').pop(), frame.lineNumber, frame.functionName];
+        },
 
-            for(var i = 0, l = rxDef.length; i < l; i++) {
-
-                var def = rxDef[i],
-                    matches = def.pattern.exec(line),
-                    indices = def.indices;
-
-                if (!!matches) {
-                    return [matches[indices[0]], 'line ' + matches[indices[1]], (matches[indices[2]] || 'anonymous').trim()];
-                }
-
-            }
-
-            return [];
-
-        }),
-
-        getStackParts = function getStackParts(stack) {
-            return stack
-                .split(newline)
+        getStackParts = function getStackParts(stackframes) {
+            return stackframes
                 .map(getParts)
                 .filter(function isMatch(arr) {
                     return arr.length === 3;
@@ -135,7 +79,7 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
                 tab = empty,
                 result = [],
                 context = '\u2192 in context',
-                target = ContextManager.getCurrentContext(e ? e.stack : undefined);
+                target = ContextManager.getCurrentContext(e);
 
             while (!!target) {
                 result = result.concat(target.isolateStack);
@@ -275,15 +219,14 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
 
     Context.prototype.run = function run(fn, cleanUp) {
         try {
-            var wrap,
-                wrapper =
-                    'wrap = function __' + this.id + '() {' +
-                    '  return fn.apply(fn, arguments);' +
-                    '};';
+            var wrapper =
+                'wrapper = function __' + this.id + '() {' +
+                '  return fn.apply(fn, arguments);' +
+                '};';
             /* jshint -W061 */
-            eval(wrapper);
+            return eval(wrapper)();
             /* jshint +W061 */
-            return wrap();
+            //return wrapper();
         } catch (e) {
             if (cleanUp) {
                 // give error handlers time to traverse
@@ -334,9 +277,9 @@ define(['lodash', './Timeouts'], function(_, Timeouts) {
         filesToExclude = filesToExclude.concat(_.flatten(_.toArray(arguments)));
     };
 
-    ContextManager.getCurrentContext = function getCurrentContext(optStack) {
+    ContextManager.getCurrentContext = function getCurrentContext(e) {
 
-        var stack = !!optStack ? sanitize(optStack) : getCleanStack(),
+        var stack = e instanceof Error ? sanitize(StackParser.parse(e)) : getCleanStack(),
             parts = getStackParts(stack),
             context = _.findLast(parts, function isContext(arr) {
                     return /__Context\d+/.test(arr[2]);

@@ -9,12 +9,22 @@ define(['lodash'], function(_) {
 
         var intervals = {},
             origSetTimeout = window.setTimeout.bind(window),
-            origSetInterval = window.setInterval.bind(window);
+            origSetInterval = window.setInterval.bind(window),
+            getFunctionName = function getFunctionName(fn) {
+                var name = fn.name;
+                if (!name) {
+                    var match = fn.toString().match(/^function\s*([^\s(]+)/);
+                    if (match) {
+                        name = match[1];
+                    }
+                }
+                return name || 'anonymous';
+            };
 
         window.setTimeout = _.wrap(window.setTimeout, function _ignore_SetTimeout(st) {
             var args = [].slice.call(arguments, 1),
                 parent = ContextManager.getCurrentContext(),
-                fnName = (args[0].name || 'anonymous');
+                fnName = getFunctionName(args[0]);
             parent.incRefCount();
             return st(function setTimeout() {
                 parent.fork('setTimeout: ' + fnName, args[0], function cleanUp() {
@@ -36,7 +46,7 @@ define(['lodash'], function(_) {
             var childContext,
                 args = [].slice.call(arguments, 1),
                 parent = ContextManager.getCurrentContext(),
-                fnName = (args[0].name || 'anonymous'),
+                fnName = getFunctionName(args[0]),
                 cleanUp = function cleanUp() {
                     if (childContext) {
                         childContext.unfreeze();
@@ -58,7 +68,7 @@ define(['lodash'], function(_) {
         window.requestAnimationFrame = _.wrap(window.requestAnimationFrame, function _ignore_RAF(raf) {
             var args = [].slice.call(arguments, 1),
                 parent = ContextManager.getCurrentContext(),
-                fnName = (args[0].name || 'anonymous');
+                fnName = getFunctionName(args[0]);
             parent.incRefCount();
             return raf(function requestAnimationFrame() {
                 parent.fork('requestAnimationFrame: ' + fnName, args[0], function cleanUp() {

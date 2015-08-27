@@ -19,6 +19,7 @@
   "dependencies": {
     "requirejs": "~2.1.18",
     "angularjs": "~1.4.2",
-    "lodash": "~3.10.0"
+    "lodash": "~3.10.0",
+    "error-stack-parser": "~1.2.2"
   }
 }

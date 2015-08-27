@@ -7,6 +7,17 @@ define(['lodash'], function(_) {
 
     var initialize = _.once(function init(ContextManager) {
 
+        function getFunctionName(fn) {
+            var name = fn.name;
+            if (!name) {
+                var match = fn.toString().match(/^function\s*([^\s(]+)/);
+                if (match) {
+                    name = match[1];
+                }
+            }
+            return name || 'anonymous';
+        }
+
         function wrapAddListener(obj) {
             var ael = obj.addEventListener;
             obj.addEventListener = function _ignore_AddEventListener(type, handler, capture) {
@@ -14,7 +25,7 @@ define(['lodash'], function(_) {
                     eventHandler = function handleEvent(e) {
                         var method = handler.bind(null, e),
                             childName = initialize.prettify(e.target, type);
-                        return parent.fork(childName, method);
+                        return parent.fork(childName + ': ' + getFunctionName(handler), method);
                     };
                 parent.incRefCount();
                 // TODO: switch to mutation observer?
