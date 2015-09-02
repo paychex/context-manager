@@ -27,7 +27,7 @@ define(['lodash'], function(_) {
                 fnName = getFunctionName(args[0]);
             parent.incRefCount();
             return st(function setTimeout() {
-                parent.fork('setTimeout: ' + fnName, args[0], function cleanUp() {
+                parent.fork('setTimeout: ' + fnName, args[0], [].slice.call(arguments), function cleanUp() {
                     parent.delete();
                 });
                 parent.decRefCount();
@@ -59,7 +59,7 @@ define(['lodash'], function(_) {
                     childContext = parent.createChild('setInterval: ' + fnName);
                     childContext.freeze();
                 }
-                childContext.run(args[0], cleanUp);
+                childContext.run(args[0], [].slice.call(arguments), cleanUp);
             }, args[1] || 0);
             intervals[token] = cleanUp;
             return token;
@@ -71,7 +71,7 @@ define(['lodash'], function(_) {
                 fnName = getFunctionName(args[0]);
             parent.incRefCount();
             return raf(function requestAnimationFrame() {
-                parent.fork('requestAnimationFrame: ' + fnName, args[0], function cleanUp() {
+                parent.fork('requestAnimationFrame: ' + fnName, args[0], [].slice.call(arguments), function cleanUp() {
                     parent.delete();
                 });
                 parent.decRefCount();

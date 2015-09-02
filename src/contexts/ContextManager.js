@@ -222,17 +222,22 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
         return child;
     };
 
-    Context.prototype.fork = function fork(childName, method, cleanUp) {
+    Context.prototype.fork = function fork(childName, method, args, cleanUp) {
         var child = this.createChild(childName),
-            result = child.run(method, cleanUp);
+            result = child.run(method, args, cleanUp);
         return child.delete(), result;
     };
 
-    Context.prototype.run = function run(fn, cleanUp) {
+    Context.prototype.run = function run(fn, args, cleanUp) {
         try {
+            args = args || [];
+            if (typeof args === 'function') {
+                cleanUp = args;
+                args = [];
+            }
             var wrapper =
                 'wrapper = function __' + this.id + '() {' +
-                '  return fn.apply(fn, arguments);' +
+                '  return fn.apply(fn, args);' +
                 '};';
             /* jshint -W061 */
             return eval(wrapper)();
