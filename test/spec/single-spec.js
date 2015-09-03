@@ -1,7 +1,7 @@
 define([
     'lodash',
     './generators',
-    '../../index'
+    'index'
 ], function(
     _,
     gen,
