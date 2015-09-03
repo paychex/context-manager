@@ -22,11 +22,11 @@
  SOFTWARE.
  */
 define([
-    'src/contexts/ContextManager',
-    'src/contexts/Timeouts',
-    'src/contexts/DOMEvents',
-    'src/contexts/AngularCore',
-    'src/contexts/AngularEvents'
+    'contexts/ContextManager',
+    'contexts/Timeouts',
+    'contexts/DOMEvents',
+    'contexts/AngularCore',
+    'contexts/AngularEvents'
 ], function(
     ContextManager,
     initTimeouts,

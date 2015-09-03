@@ -100,6 +100,8 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
 
             result = result.filter(function notSelf(arr) {
                 return arr[0] !== 'ContextManager.js' &&
+                    arr[0] !== 'cm.js' &&
+                    arr[0] !== 'cm.min.js' &&
                     arr[0].indexOf('eval') === -1 &&
                     arr[0].indexOf('Function') === -1;
             }).filter(function not3rdParty(line) {

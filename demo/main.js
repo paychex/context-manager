@@ -1,7 +1,7 @@
 /* global require, document: false */
 
 require.config({
-    basePath: 'src',
+    basePath: '../src',
     paths: {
         lodash: '../bower_components/lodash/lodash',
         angular: '../bower_components/angularjs/angular',

@@ -1,0 +1,7 @@
+(function (root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define(['lodash', 'angular', 'error-stack-parser'], factory);
+    } else {
+        root.libGlobalName = factory(root._, root.angular, root.esp);
+    }
+}(this, function (_, angular, ESP) {

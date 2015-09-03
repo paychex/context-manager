@@ -9,10 +9,11 @@
     "test": "karma start karma.conf.js",
     "test-single-run": "karma start karma.conf.js  --single-run",
     "preupdate-webdriver": "npm install",
-    "build:dev": "r.js.cmd -o optimize=none baseUrl=. paths.error-stack-parser=empty: paths.lodash=empty: paths.angular=empty: shim.angular.eports=angular shim.lodash.exports=_ name=index out=build/cm.js",
-    "build:prod": "r.js.cmd -o baseUrl=. paths.error-stack-parser=empty: paths.lodash=empty: paths.angular=empty: shim.angular.eports=angular shim.lodash.exports=_ name=index out=build/cm.min.js",
+    "prebuild": "npm install",
+    "build:dev": "r.js.cmd -o optimize=none baseUrl=src paths.error-stack-parser=empty: paths.lodash=empty: paths.angular=empty: shim.angular.eports=angular shim.lodash.exports=_ name=../node_modules/almond/almond include=index out=build/cm.js wrap.startFile=wrap.start.txt wrap.endFile=wrap.end.txt",
+    "build:prod": "r.js.cmd -o baseUrl=src paths.error-stack-parser=empty: paths.lodash=empty: paths.angular=empty: shim.angular.eports=angular shim.lodash.exports=_ name=../node_modules/almond/almond include=index out=build/cm.min.js wrap.startFile=wrap.start.txt wrap.endFile=wrap.end.txt",
     "build": "npm run-script build:dev && npm run-script build:prod",
-    "doc": "./node_modules/.bin/jsdoc -d build/dev/doc -r -c ./jsdoc.conf.json -P ./package.json app/src"
+    "doc": "./node_modules/.bin/jsdoc -d build/doc -r -P ./package.json src/contexts"
   },
   "author": "Dan Barnes",
   "license": "MIT",
@@ -20,6 +21,7 @@
     "bower": "^1.4.1"
   },
   "devDependencies": {
+    "almond": "^0.3.1",
     "jsdoc": "^3.3.0-alpha10",
     "karma": "^0.12.23",
     "karma-cli": "0.0.4",
