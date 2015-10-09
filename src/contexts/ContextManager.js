@@ -25,20 +25,24 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
         },
 
         getCleanStack = function getCleanStack() {
-            try {
-                throw new Error();
-            } catch (e) {
-                if (isFirefox) {
-                    if (writable === undefined) {
-                        var prop = Object.getOwnPropertyDescriptor(e, 'stack')
-                        writable = prop && prop.writable;
-                    }
-                    if (writable) {
-                        e.stack = e.stack ? e.stack.replace(/ line (\d+) \> eval.+/g, ':$1') : '';
-                    }
+            var e = new Error();
+            if (!e.stack) {
+                try {
+                    throw e;
+                } catch (x) {
+                    e.stack = x.stack;
                 }
-                return sanitize(StackParser.parse(e));
             }
+            if (isFirefox) {
+                if (writable === undefined) {
+                    var prop = Object.getOwnPropertyDescriptor(e, 'stack');
+                    writable = prop && prop.writable;
+                }
+                if (writable) {
+                    e.stack = e.stack ? e.stack.replace(/ line (\d+) \> eval.+/g, ':$1') : '';
+                }
+            }
+            return sanitize(StackParser.parse(e));
         },
 
         getParts = function getParts(frame) {
