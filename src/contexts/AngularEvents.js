@@ -12,7 +12,7 @@ define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
 
         eventsToHandle.forEach(function wrapEventDirective(eventName) {
             var ngEventName = 'ng' + eventName;
-            $provide.decorator(ngEventName + 'Directive', function($delegate) {
+            $provide.decorator(ngEventName + 'Directive', ['$delegate', function($delegate) {
                 var orig = $delegate[0];
                 orig.compile = function compile($element, attr) {
                     var fn = $parse(attr[ngEventName], /* interceptorFn */ null, /* expensiveChecks */ true);
@@ -34,7 +34,7 @@ define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
                     };
                 };
                 return $delegate;
-            });
+            }]);
         });
 
     });
