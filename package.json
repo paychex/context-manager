@@ -1,7 +1,7 @@
 {
-  "name": "ContextManager",
-  "version": "0.0.0",
-  "description": "",
+  "name": "context-manager",
+  "version": "1.0.0",
+  "description": "Provides asynchronous error handling and improved stack traces in JavaScript applications.",
   "main": "index.js",
   "scripts": {
     "prestart": "npm install",
@@ -15,8 +15,25 @@
     "build": "npm run-script build:dev && npm run-script build:prod",
     "doc": "./node_modules/.bin/jsdoc -d build/doc -r -P ./package.json src/contexts"
   },
-  "author": "Dan Barnes",
-  "license": "MIT",
+  "author": "Paychex, Inc.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/paychex/context-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paychex/context-manager/issues"
+  },
+  "keywords": [
+    "async",
+    "asynchronous",
+    "error",
+    "handling",
+    "javascript",
+    "stack",
+    "stack trace",
+    "exception"
+  ],
   "dependencies": {
     "bower": "^1.4.1"
   },
