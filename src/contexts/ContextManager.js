@@ -15,8 +15,6 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
         garbage = [],
         filesToExclude = [],
         
-        isFirefox = typeof InstallTrigger !== 'undefined',
-
         sanitize = function sanitize(stackframes) {
             return stackframes
                 .filter(function isLine(frame) {
@@ -26,21 +24,23 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
 
         getCleanStack = function getCleanStack() {
             var e = new Error();
+            if (writable === undefined) {
+                var prop = Object.getOwnPropertyDescriptor(e, 'stack');
+                writable = prop && prop.writable;
+            }
             if (!e.stack) {
                 try {
                     throw e;
                 } catch (x) {
-                    e.stack = x.stack;
+                    if (writable) {
+                        e.stack = x.stack;
+                    } else {
+                        e = x;
+                    }
                 }
             }
-            if (isFirefox) {
-                if (writable === undefined) {
-                    var prop = Object.getOwnPropertyDescriptor(e, 'stack');
-                    writable = prop && prop.writable;
-                }
-                if (writable) {
-                    e.stack = e.stack ? e.stack.replace(/ line (\d+) \> eval.+/g, ':$1') : '';
-                }
+            if (writable) {
+                e.stack = e.stack ? e.stack.replace(/ line (\d+) \> eval.+/g, ':$1') : '';
             }
             return sanitize(StackParser.parse(e));
         },
