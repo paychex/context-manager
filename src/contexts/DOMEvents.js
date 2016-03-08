@@ -19,7 +19,8 @@ define(['lodash'], function(_) {
         }
 
         function wrapAddListener(obj) {
-            var ael = obj.addEventListener;
+            var ael = obj.addEventListener,
+                rel = obj.removeEventListener;
             obj.addEventListener = function _ignore_AddEventListener(type, handler, capture) {
                 var parent = ContextManager.getCurrentContext(),
                     eventHandler = function handleEvent(e) {
@@ -36,7 +37,15 @@ define(['lodash'], function(_) {
                     parent.delete();
                     obj.removeEventListener(type, eventHandler);
                 }, false);
+                handler._wrapped = eventHandler;
                 return ael.call(this, type, eventHandler, capture);
+            };
+            obj.removeEventListener = function _ignore_RemoveEventListener(type, handler, capture) {
+                if (handler._wrapped) {
+                    rel.call(this, type, handler._wrapped, capture);
+                } else {
+                    rel.call(this, type, handler, capture);
+                }
             };
         }
 
