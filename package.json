@@ -49,5 +49,6 @@
     "karma-requirejs": "^0.2.2",
     "karma-story-reporter": "^0.2.2",
     "requirejs": "^2.1.15"
-  }
+  },
+  "private": false
 }
