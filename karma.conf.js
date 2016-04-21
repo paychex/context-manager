@@ -12,15 +12,10 @@ module.exports = function(config) {
 
         files: [
             'test/config.js',
-            {pattern: 'index.js', included: false, watched: true},
             {pattern: 'src/**/*.js', included: false, watched: true},
             {pattern: 'test/**/*.js', included: false, watched: true},
             {pattern: 'bower_components/**/*.js', included: false, watched: true}
         ],
-
-        //preprocessors: {
-        //    'src/**/*.js': ['coverage']
-        //},
 
         autoWatch: true,
         singleRun: false,

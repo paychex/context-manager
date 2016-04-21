@@ -5,7 +5,7 @@ define(['lodash'], function(_) {
 
     'use strict';
 
-    var initialize = _.once(function init(ContextManager) {
+    var initialize = _.once(function init(ContextManager, eventTokensToWrap) {
 
         function getFunctionName(fn) {
             var name = fn.name;
@@ -19,9 +19,19 @@ define(['lodash'], function(_) {
         }
 
         function wrapAddListener(obj) {
+
             var ael = obj.addEventListener,
-                rel = obj.removeEventListener;
+                rel = obj.removeEventListener,
+                tokensToWrap = eventTokensToWrap || [];
+
             obj.addEventListener = function _ignore_AddEventListener(type, handler, capture) {
+                // we only want to wrap mouse and keyboard events
+                if (tokensToWrap.every(function eventShouldNotBeWrapped(token) {
+                    return type.indexOf(token) === -1;
+                })) {
+                    // defer to the original handler
+                    return ael.call(this, type, handler, capture);
+                }
                 var parent = ContextManager.getCurrentContext(),
                     eventHandler = function handleEvent(e) {
                         var method = handler.bind(null, e),
@@ -40,6 +50,7 @@ define(['lodash'], function(_) {
                 handler._wrapped = eventHandler;
                 return ael.call(this, type, eventHandler, capture);
             };
+
             obj.removeEventListener = function _ignore_RemoveEventListener(type, handler, capture) {
                 if (handler._wrapped) {
                     rel.call(this, type, handler._wrapped, capture);
@@ -47,6 +58,7 @@ define(['lodash'], function(_) {
                     rel.call(this, type, handler, capture);
                 }
             };
+
         }
 
         wrapAddListener(window);

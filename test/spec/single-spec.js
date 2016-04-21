@@ -17,7 +17,7 @@ define([
     var origST = window.setTimeout.bind(window);
 
     index.initTimeouts();
-    index.initDOMEvents();
+    index.initDOMEvents(['click']);
     index.manager.excludeFiles(
         'lodash.js',
         'angular.js',

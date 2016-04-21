@@ -9,7 +9,10 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
         space = ' ',
         colon = ': ',
         newline = '\n',
-        writable = undefined,
+        writable = (function() {
+            var prop = Object.getOwnPropertyDescriptor(new Error(), 'stack');
+            return prop && prop.writable || false;
+        })(),
 
         cache = {},
         garbage = [],
@@ -22,22 +25,27 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
                 });
         },
 
+        // pulling out try/catch into separate method so
+        // browsers that have stacks on errors without
+        // needing to throw can use an optimized version
+        // of getCleanStack
+        getErrorWithStack = function getErrorWithStack(e) {
+            try {
+                throw e;
+            } catch (x) {
+                if (writable) {
+                    e.stack = x.stack;
+                } else {
+                    e = x;
+                }
+            }
+            return e;
+        },
+
         getCleanStack = function getCleanStack() {
             var e = new Error();
-            if (writable === undefined) {
-                var prop = Object.getOwnPropertyDescriptor(e, 'stack');
-                writable = prop && prop.writable;
-            }
             if (!e.stack) {
-                try {
-                    throw e;
-                } catch (x) {
-                    if (writable) {
-                        e.stack = x.stack;
-                    } else {
-                        e = x;
-                    }
-                }
+                e = getErrorWithStack(e);
             }
             if (writable) {
                 e.stack = e.stack ? e.stack.replace(/ line (\d+) \> eval.+/g, ':$1') : '';
@@ -234,6 +242,11 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
         return child.delete(), result;
     };
 
+    // NOTE: this code cannot be optimized -- both the
+    // try/catch and eval(...) statements force the engine
+    // to run the unoptimized original function; reassigning
+    // arguments can also cause this to happen -- unfortunately,
+    // this method will probably always be a bottleneck
     Context.prototype.run = function run(fn, args, cleanUp) {
         try {
             args = args || [];
