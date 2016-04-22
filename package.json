@@ -1,8 +1,8 @@
 {
   "name": "context-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Provides asynchronous error handling and improved stack traces in JavaScript applications.",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "prestart": "npm install",
     "pretest": "npm install",

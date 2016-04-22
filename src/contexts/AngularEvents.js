@@ -29,6 +29,7 @@ define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
                         element.on(eventName.toLowerCase(), handler);
                         element.on('$destroy', function cleanUp() {
                             element.off(eventName.toLowerCase(), handler);
+                            element.off('$destroy', cleanUp);
                             parent.delete();
                         });
                     };

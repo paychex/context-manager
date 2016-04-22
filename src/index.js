@@ -38,8 +38,8 @@ define([
     'use strict';
 
     function wrap(fn) {
-        return function doInit() {
-            fn(ContextManager);
+        return function doInit(arg) {
+            fn(ContextManager, arg);
         };
     }
 

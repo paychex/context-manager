@@ -2,7 +2,7 @@ define(['index'], function(CM) {
 
     'use strict';
 
-    CM.initDOMEvents();
+    CM.initDOMEvents(['click']);
 
     describe('DOMEvents', function() {
 

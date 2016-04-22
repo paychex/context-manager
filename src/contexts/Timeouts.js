@@ -5,11 +5,18 @@ define(['lodash'], function(_) {
 
     'use strict';
 
-    return _.once(function initialize(ContextManager) {
+    return _.once(function initialize(ContextManager, enableMap) {
 
         var intervals = {},
             origSetTimeout = window.setTimeout.bind(window),
             origSetInterval = window.setInterval.bind(window),
+
+            enabled = _.defaults({}, enableMap, {
+                setTimeout: true,
+                setInterval: true,
+                requestAnimationFrame: true
+            }),
+
             getFunctionName = function getFunctionName(fn) {
                 var name = fn.name;
                 if (!name) {
@@ -19,64 +26,87 @@ define(['lodash'], function(_) {
                     }
                 }
                 return name || 'anonymous';
+            },
+
+            // for optimization reasons, we don't want to pass the
+            // arguments object to other methods directly; we also
+            // want to avoid instantiating it (which is what [].slice
+            // will do); this method copies elements manually into a
+            // new array instance
+            toArray = function toArray(args) {
+                var i = 0, l = args.length, res = new Array(l);
+                for(i; i < l; ++i) {
+                    res[i] = args[i];
+                }
+                return res;
             };
 
-        window.setTimeout = _.wrap(window.setTimeout, function _ignore_SetTimeout(st) {
-            var args = [].slice.call(arguments, 1),
-                parent = ContextManager.getCurrentContext(),
-                fnName = getFunctionName(args[0]);
-            parent.incRefCount();
-            return st(function setTimeout() {
-                parent.fork('setTimeout: ' + fnName, args[0], [].slice.call(arguments), function cleanUp() {
-                    parent.delete();
-                });
-                parent.decRefCount();
-            }, args[1] || 0);
-        });
+        if (enabled.setTimeout) {
 
-        window.clearInterval = _.wrap(window.clearInterval, function _ignore_ClearInterval(ci, token) {
-            ci(token);
-            if (intervals[token]) {
-                intervals[token]();
-                delete intervals[token];
-            }
-        });
-
-        window.setInterval = _.wrap(window.setInterval, function _ignore_SetInterval(si) {
-            var childContext,
-                args = [].slice.call(arguments, 1),
-                parent = ContextManager.getCurrentContext(),
-                fnName = getFunctionName(args[0]),
-                cleanUp = function cleanUp() {
-                    if (childContext) {
-                        childContext.unfreeze();
-                    }
-                    parent.delete();
-                };
-            parent.incRefCount();
-            var token = si(function setInterval() {
-                if (!childContext) {
-                    childContext = parent.createChild('setInterval: ' + fnName);
-                    childContext.freeze();
-                }
-                childContext.run(args[0], [].slice.call(arguments), cleanUp);
-            }, args[1] || 0);
-            intervals[token] = cleanUp;
-            return token;
-        });
-
-        window.requestAnimationFrame = _.wrap(window.requestAnimationFrame, function _ignore_RAF(raf) {
-            var args = [].slice.call(arguments, 1),
-                parent = ContextManager.getCurrentContext(),
-                fnName = getFunctionName(args[0]);
-            parent.incRefCount();
-            return raf(function requestAnimationFrame() {
-                parent.fork('requestAnimationFrame: ' + fnName, args[0], [].slice.call(arguments), function cleanUp() {
-                    parent.delete();
-                });
-                parent.decRefCount();
+            window.setTimeout = _.wrap(window.setTimeout, function _ignore_SetTimeout(st, fn, ms) {
+                var parent = ContextManager.getCurrentContext(),
+                    fnName = getFunctionName(fn),
+                    cleanUp = function cleanUp() {
+                        parent.delete();
+                    };
+                parent.incRefCount();
+                return st(function setTimeout() {
+                    parent.fork('setTimeout: ' + fnName, fn, toArray(arguments), cleanUp);
+                    parent.decRefCount();
+                }, ms || 0);
             });
-        });
+
+        }
+
+        if (enabled.setInterval) {
+
+            window.clearInterval = _.wrap(window.clearInterval, function _ignore_ClearInterval(ci, token) {
+                ci(token);
+                if (intervals[token]) {
+                    intervals[token]();
+                    delete intervals[token];
+                }
+            });
+
+            window.setInterval = _.wrap(window.setInterval, function _ignore_SetInterval(si, fn, ms) {
+                var childContext,
+                    parent = ContextManager.getCurrentContext(),
+                    fnName = getFunctionName(fn),
+                    cleanUp = function cleanUp() {
+                        if (childContext) {
+                            childContext.unfreeze();
+                        }
+                        parent.delete();
+                    };
+                parent.incRefCount();
+                var token = si(function setInterval() {
+                    if (!childContext) {
+                        childContext = parent.createChild('setInterval: ' + fnName);
+                        childContext.freeze();
+                    }
+                    childContext.run(fn, toArray(arguments), cleanUp);
+                }, ms || 0);
+                intervals[token] = cleanUp;
+                return token;
+            });
+
+        }
+
+        if (enabled.requestAnimationFrame) {
+
+            window.requestAnimationFrame = _.wrap(window.requestAnimationFrame, function _ignore_RAF(raf, fn) {
+                var parent = ContextManager.getCurrentContext(),
+                    fnName = getFunctionName(fn);
+                parent.incRefCount();
+                return raf(function requestAnimationFrame() {
+                    parent.fork('requestAnimationFrame: ' + fnName, fn, toArray(arguments), function cleanUp() {
+                        parent.delete();
+                    });
+                    parent.decRefCount();
+                });
+            });
+
+        }
 
         return {
             origTimeout: origSetTimeout,
