@@ -94,13 +94,12 @@ define(['lodash'], function(_) {
 
         if (enabled.requestAnimationFrame) {
 
-            window.requestAnimationFrame = _.wrap(window.requestAnimationFrame, function _ignore_RAF(raf) {
-                var args = [].slice.call(arguments, 1),
-                    parent = ContextManager.getCurrentContext(),
-                    fnName = getFunctionName(args[0]);
+            window.requestAnimationFrame = _.wrap(window.requestAnimationFrame, function _ignore_RAF(raf, fn) {
+                var parent = ContextManager.getCurrentContext(),
+                    fnName = getFunctionName(fn);
                 parent.incRefCount();
                 return raf(function requestAnimationFrame() {
-                    parent.fork('requestAnimationFrame: ' + fnName, args[0], [].slice.call(arguments), function cleanUp() {
+                    parent.fork('requestAnimationFrame: ' + fnName, fn, toArray(arguments), function cleanUp() {
                         parent.delete();
                     });
                     parent.decRefCount();
