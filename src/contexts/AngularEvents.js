@@ -19,7 +19,7 @@ define(['lodash', 'angular', './DOMEvents'], function(_, angular, DOMEvents) {
                     return function ngEventHandler(scope, element) {
                         var parent = ContextManager.getCurrentContext(),
                             handler = function _ignore_EventHandler(event) {
-                                var fnBound = _.bind(fn, event.currentTarget, scope, {$event:event}),
+                                var fnBound = _.bind(fn, this, scope, {$event:event}),
                                     contextName = DOMEvents.prettify(event.target, ngEventName);
                                 scope.$apply(function invokeHandler() {
                                     return parent.fork(contextName + ': ' + attr[ngEventName], fnBound);
