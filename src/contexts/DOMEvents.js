@@ -34,7 +34,7 @@ define(['lodash'], function(_) {
                 }
                 var parent = ContextManager.getCurrentContext(),
                     eventHandler = function handleEvent(e) {
-                        var method = handler.bind(null, e),
+                        var method = _.bind(handler, this, e),
                             childName = initialize.prettify(e.target, type);
                         return parent.fork(childName + ': ' + getFunctionName(handler), method);
                     };
