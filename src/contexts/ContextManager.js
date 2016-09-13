@@ -261,7 +261,6 @@ define(['lodash', 'error-stack-parser', './Timeouts'], function(_, StackParser, 
             /* jshint -W061 */
             return eval(wrapper)();
             /* jshint +W061 */
-            //return wrapper();
         } catch (e) {
             if (cleanUp) {
                 // give error handlers time to traverse

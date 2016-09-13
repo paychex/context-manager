@@ -63,6 +63,68 @@ define([
         }
     };
 
+    describe('specifications', function() {
+
+        describe('setTimeout', function() {
+
+            it('wrapper passes extra args to callback', function(done) {
+                setTimeout(function verify(arg1, arg2) {
+                    expect(arg1).toBe('a');
+                    expect(arg2).toBe('b');
+                    done();
+                }, 20, 'a', 'b');
+            });
+
+            it('throws on string instead of function', function() {
+                try {
+                    setTimeout('alert(0)', 20);
+                } catch (e) {
+                    expect(e.message).toContain('eval');
+                }
+            });
+
+        });
+
+        describe('setInterval', function() {
+
+            it('throws on string instead of function', function() {
+                try {
+                    setTimeout('alert(0)', 20);
+                } catch (e) {
+                    expect(e.message).toContain('eval');
+                }
+            });
+
+            it('wrapper returns token to clear interval', function(done) {
+                var called = false,
+                    token = setInterval(function() {
+                        called = true;
+                    }, 50);
+                expect(token).toBeDefined();
+                expect(called).toBe(false);
+                clearInterval(token);
+                setTimeout(function verify() {
+                    expect(called).toBe(false);
+                    done();
+                }, 100);
+            });
+
+            it('wrappper passes extra args to callback', function(done) {
+                var count = 0,
+                    interval = setInterval(function verify(arg1, arg2) {
+                        expect(arg1).toBe('a');
+                        expect(arg2).toBe('b');
+                        if (++count >= 5) {
+                            clearInterval(interval);
+                            done();
+                        }
+                    }, 100, 'a', 'b');
+            });
+
+        });
+
+    });
+
     describe('execution contexts', function() {
 
         beforeEach(index.manager.attemptCollection);
@@ -202,6 +264,7 @@ define([
             it('propagates to parent contexts until handled', function(done) {
                 var root = index.manager.getCurrentContext(),
                     unsub = root.onError(function handler(e) {
+                        e.handled = true;
                         expect(e.context.name).toBe('child');
                         expect(e.message).toBe('error message');
                         unsub();
@@ -215,6 +278,7 @@ define([
             it('parameter contains error and context data', function(done) {
                 var root = index.manager.getCurrentContext(),
                     unsub = root.onError(function handler(e) {
+                        e.handled = true;
                         expect(e.context.name).toBe('global');
                         expect(e.message).toBe('error message');
                         unsub();

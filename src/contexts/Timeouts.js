@@ -33,10 +33,10 @@ define(['lodash'], function(_) {
             // want to avoid instantiating it (which is what [].slice
             // will do); this method copies elements manually into a
             // new array instance
-            toArray = function toArray(args) {
-                var i = 0, l = args.length, res = new Array(l);
-                for(i; i < l; ++i) {
-                    res[i] = args[i];
+            toArray = function toArray(args, index) {
+                var i = index || 0, j = 0, l = args.length, res = new Array(Math.max(0, l-i));
+                for(; i < l; ++i, ++j) {
+                    res[j] = args[i];
                 }
                 return res;
             };
@@ -44,14 +44,18 @@ define(['lodash'], function(_) {
         if (enabled.setTimeout) {
 
             window.setTimeout = _.wrap(window.setTimeout, function _ignore_SetTimeout(st, fn, ms) {
+                if (typeof fn === 'string') {
+                    throw new Error('eval mode disabled for security reasons');
+                }
                 var parent = ContextManager.getCurrentContext(),
+                    args = toArray(arguments, 3),
                     fnName = getFunctionName(fn),
                     cleanUp = function cleanUp() {
                         parent.delete();
                     };
                 parent.incRefCount();
                 return st(function setTimeout() {
-                    parent.fork('setTimeout: ' + fnName, fn, toArray(arguments), cleanUp);
+                    parent.fork('setTimeout: ' + fnName, fn, args, cleanUp);
                     parent.decRefCount();
                 }, ms || 0);
             });
@@ -69,8 +73,12 @@ define(['lodash'], function(_) {
             });
 
             window.setInterval = _.wrap(window.setInterval, function _ignore_SetInterval(si, fn, ms) {
+                if (typeof fn === 'string') {
+                    throw new Error('eval mode disabled for security reasons');
+                }
                 var childContext,
                     parent = ContextManager.getCurrentContext(),
+                    args = toArray(arguments, 3),
                     fnName = getFunctionName(fn),
                     cleanUp = function cleanUp() {
                         if (childContext) {
@@ -84,7 +92,7 @@ define(['lodash'], function(_) {
                         childContext = parent.createChild('setInterval: ' + fnName);
                         childContext.freeze();
                     }
-                    childContext.run(fn, toArray(arguments), cleanUp);
+                    childContext.run(fn, toArray(args), cleanUp);
                 }, ms || 0);
                 intervals[token] = cleanUp;
                 return token;
