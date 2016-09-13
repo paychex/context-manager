@@ -92,7 +92,7 @@ define(['lodash'], function(_) {
                         childContext = parent.createChild('setInterval: ' + fnName);
                         childContext.freeze();
                     }
-                    childContext.run(fn, toArray(args), cleanUp);
+                    childContext.run(fn, args, cleanUp);
                 }, ms || 0);
                 intervals[token] = cleanUp;
                 return token;
