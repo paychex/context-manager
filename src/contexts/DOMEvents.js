@@ -43,12 +43,12 @@ define(['lodash'], function(_) {
                 // what happens if node is re-parented -- would
                 // we get false positives? we'd need to make sure
                 // the node is actually being garbage collected
+                handler._wrapped = handler._wrapped || eventHandler;
                 ael.call(this, '$destroy', function cleanUp() {
                     parent.delete();
-                    obj.removeEventListener(type, eventHandler);
+                    obj.removeEventListener(type, handler._wrapped);
                 }, false);
-                handler._wrapped = eventHandler;
-                return ael.call(this, type, eventHandler, capture);
+                return ael.call(this, type, handler._wrapped, capture);
             };
 
             obj.removeEventListener = function _ignore_RemoveEventListener(type, handler, capture) {
