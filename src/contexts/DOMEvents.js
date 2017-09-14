@@ -52,9 +52,10 @@ define(['lodash'], function(_) {
             };
 
             obj.removeEventListener = function _ignore_RemoveEventListener(type, handler, capture) {
-                if (handler._wrapped) {
+                if (handler && handler._wrapped) {
                     rel.call(this, type, handler._wrapped, capture);
                 } else {
+                    // okay to call when handler is undefined
                     rel.call(this, type, handler, capture);
                 }
             };
